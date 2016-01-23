@@ -12,6 +12,7 @@ import (
 const (
     WildcardSeparator = ":"
     WildcardSubSeparator = ","
+    WildcardToken = "*"
 )
 
 /*
@@ -46,14 +47,67 @@ func NewWildcardPermission(parts string) (*WildcardPermission, error) {
     return p, nil
 }
 
+func (w *WildcardPermission) implies(permission Permission) bool {
+    otherPermission,ok := permission.(*WildcardPermission)
+    if !ok {
+        //fmt.Printf("Not the right type: %s\n", permission)
+        return false
+    }
+    
+    otherParts := otherPermission.parts
+    
+    //fmt.Printf("Printing %v\n", otherParts)
+    i := 0
+    
+    for i < len(otherParts)  {
+        otherPart := otherParts[i]
+        // if this permission has less parts than the other permission,
+        // everything after this point is automatically implied
+        if len(w.parts)-1 < i {
+            return true;
+        } else {
+            part := w.parts[i]
+            //fmt.Printf("  Testing %v\n", part)
+            if !part[WildcardToken] && !containsAll(part, otherPart) {
+                //fmt.Printf("    fail")
+                return false;
+            }
+        }
+        i++
+    }
+    
+    // If this permission has more parts than the other, only imply it if all the other parts are wildcards
+    for i < len(w.parts) {
+        part := w.parts[i]
+        if !part[WildcardToken] {
+            //fmt.Printf("   not token: %v\n", part)
+            return false
+        }
+        i++
+    }
+    
+    return true
+}
+
+// Return true, if this contains all the elements in that (may contain more)
+func containsAll(this map[string]bool, that map[string]bool) bool {
+    for key, _ := range that {
+        if !this[key] {
+            return false
+        }
+    }
+    
+    return true
+}
+
 // Parse the bits and pieces of the wildcard permission string
 func (w *WildcardPermission) setParts(partsString string) error {
-    
-    if partsString == "" {
+    parts := strings.TrimSpace(partsString)
+
+    if parts == "" {
         return errors.New("parts must not be an empty string")
     }
     
-    parts := strings.TrimSpace(partsString)
     
     partsArray := strings.Split(parts, WildcardSeparator)
     
