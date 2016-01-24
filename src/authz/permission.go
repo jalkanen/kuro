@@ -10,9 +10,9 @@ import (
 )
 
 const (
-    WildcardSeparator = ":"
+    WildcardSeparator    = ":"
     WildcardSubSeparator = ","
-    WildcardToken = "*"
+    WildcardToken        = "*"
 )
 
 /*
