@@ -4,5 +4,12 @@ import (
 )
 
 type Authenticator interface {
-    authenticate(AuthenticationToken) (Account,error)
+    Authenticate(AuthenticationToken) (Account,error)
+}
+
+type IncorrectCredentialsError struct {
+}
+
+func (w *IncorrectCredentialsError) Error() string {
+    return "Incorrect credentials given."
 }
