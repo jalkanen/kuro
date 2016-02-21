@@ -50,13 +50,11 @@ func NewWildcardPermission(parts string) (*WildcardPermission, error) {
 func (w *WildcardPermission) implies(permission Permission) bool {
 	otherPermission, ok := permission.(*WildcardPermission)
 	if !ok {
-		//fmt.Printf("Not the right type: %s\n", permission)
 		return false
 	}
 
 	otherParts := otherPermission.parts
 
-	//fmt.Printf("Printing %v\n", otherParts)
 	i := 0
 
 	for i < len(otherParts) {
@@ -67,9 +65,7 @@ func (w *WildcardPermission) implies(permission Permission) bool {
 			return true
 		} else {
 			part := w.parts[i]
-			//fmt.Printf("  Testing %v\n", part)
 			if !part[WildcardToken] && !containsAll(part, otherPart) {
-				//fmt.Printf("    fail")
 				return false
 			}
 		}
@@ -80,7 +76,6 @@ func (w *WildcardPermission) implies(permission Permission) bool {
 	for i < len(w.parts) {
 		part := w.parts[i]
 		if !part[WildcardToken] {
-			//fmt.Printf("   not token: %v\n", part)
 			return false
 		}
 		i++
