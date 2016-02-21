@@ -2,3 +2,5 @@
 /pkg
 .project
 .settings
+*.iml
+/.idea
