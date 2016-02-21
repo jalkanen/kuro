@@ -1,8 +1,8 @@
 package subject
 
 import (
-	"session"
-	"authz"
+	"github.com/jalkanen/kuro/authz"
+	"github.com/jalkanen/kuro/session"
 )
 
 type Subject interface {

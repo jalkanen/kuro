@@ -1,9 +1,6 @@
 package subject
 
-import (
-
-)
+import ()
 
 type SubjectContext interface {
-    
 }
