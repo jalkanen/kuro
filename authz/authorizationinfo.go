@@ -38,7 +38,7 @@ func (a *SimpleAuthorizationInfo) AddRole(role string) {
 
 func (a *SimpleAuthorizationInfo) AddPermission(p Permission) {
 	if a.permissions == nil {
-		a.permissions = make([]Permission, 1, 128) // TODO: Perhaps this is still better as a map rather than a slice of fixed cap?
+		a.permissions = make([]Permission, 0, 128) // TODO: Perhaps this is still better as a map rather than a slice of fixed cap?
 	}
 	a.permissions = append(a.permissions, p)
 }
