@@ -9,13 +9,38 @@ type AuthenticationInfo interface {
 	Principals() map[string]interface{}
 }
 
+type SaltedAuthenticationInfo interface {
+	CredentialsSalt() []byte
+}
+
 type Account interface {
 	AuthenticationInfo
+	SaltedAuthenticationInfo
 	authz.AuthorizationInfo
 }
 
+type SimpleAuthenticationInfo struct {
+	principals map[string]interface{}
+	credentials interface{}
+	credentialsSalt []byte
+}
+
 type SimpleAccount struct {
-	Account
+	SimpleAuthenticationInfo
+}
+
+// Implements AuthenticationInfo.Credentials()
+func (a *SimpleAuthenticationInfo) Credentials() interface{} {
+	return a.credentials
+}
+
+// Implements AuthenticationInfo.Principals()
+func (a *SimpleAuthenticationInfo) Principals() map[string]interface{} {
+	return a.principals
+}
+
+func (a *SimpleAuthenticationInfo) CredentialsSalt() []byte {
+	return a.credentialsSalt
 }
 
 func (a *SimpleAccount) AddRole(role string) {
