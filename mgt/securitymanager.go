@@ -18,7 +18,8 @@ type RealmSecurityManager struct {
 
 // Replaces the realms with a single realm
 func (sm *RealmSecurityManager) SetRealm(r *realm.Realm) {
-	sm.realms = [1]realm.Realm{r}
+	sm.realms = make([]realm.Realm, 1)
+	sm.realms[0] = *r
 }
 
 // Replaces all of the realms.  Makes a copy of the incoming slice so changes to it won't mess with things
