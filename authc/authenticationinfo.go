@@ -2,11 +2,12 @@ package authc
 
 import (
 	"github.com/jalkanen/kuro/authz"
+	"fmt"
 )
 
 type AuthenticationInfo interface {
 	Credentials() interface{}
-	Principals() map[string]interface{}
+	Principals()  []interface{}
 }
 
 type SaltedAuthenticationInfo interface {
@@ -19,36 +20,67 @@ type Account interface {
 	authz.AuthorizationInfo
 }
 
-type SimpleAuthenticationInfo struct {
-	principals map[string]interface{}
+type SimpleAccount struct {
+	principals []interface{}
 	credentials interface{}
 	credentialsSalt []byte
+	permissions map[string]authz.Permission
+	roles       map[string]bool
+	Realm string
 }
 
-type SimpleAccount struct {
-	SimpleAuthenticationInfo
+// TODO: Probably shouldn't iterate through the list the entire time
+func (a *SimpleAccount) Roles() []string {
+	roles := make([]string, len(a.roles))
+	i := 0
+	for r,_ := range(a.roles) {
+		roles[i] = r
+		i++
+	}
+
+	return roles
+}
+
+func (a *SimpleAccount) HasRole(role string) bool {
+	return a.roles[role]
 }
 
 // Implements AuthenticationInfo.Credentials()
-func (a *SimpleAuthenticationInfo) Credentials() interface{} {
+func (a *SimpleAccount) Credentials() interface{} {
 	return a.credentials
 }
 
 // Implements AuthenticationInfo.Principals()
-func (a *SimpleAuthenticationInfo) Principals() map[string]interface{} {
+func (a *SimpleAccount) Principals() []interface{} {
 	return a.principals
 }
 
-func (a *SimpleAuthenticationInfo) CredentialsSalt() []byte {
+func (a *SimpleAccount) CredentialsSalt() []byte {
 	return a.credentialsSalt
 }
 
-func (a *SimpleAccount) AddRole(role string) {
+func NewAccount(principal fmt.Stringer, credentials interface{}, realm string) *SimpleAccount {
+	s := SimpleAccount{}
 
+	s.principals = make([]interface{},1)
+	s.principals[0] = principal
+
+	s.credentials = credentials
+
+	s.Realm = realm
+
+	s.roles = make(map[string]bool,5)
+	s.permissions = make(map[string]authz.Permission,5)
+
+	return &s
+}
+
+func (a *SimpleAccount) AddRole(role string) {
+	a.roles[role] = true
 }
 
 func (a *SimpleAccount) AddPermissionP(permission authz.Permission) {
-
+	a.permissions[permission.String()] = permission
 }
 
 func (a *SimpleAccount) AddPermission(permission string) error {

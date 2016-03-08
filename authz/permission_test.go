@@ -9,8 +9,8 @@ func TestAllPermission(t *testing.T) {
 	v := AllPermission{}
 	v2 := AllPermission{}
 
-	assert.True(t, v.implies(v2))
-	assert.True(t, v2.implies(v))
+	assert.True(t, v.Implies(v2))
+	assert.True(t, v2.Implies(v))
 }
 
 func TestWildcardPermissionEmpty(t *testing.T) {
@@ -46,8 +46,8 @@ func TestWildcardPermissionSimple(t *testing.T) {
 	p1, _ := NewWildcardPermission("something")
 	p2, _ := NewWildcardPermission("something")
 
-	assert.True(t, p1.implies(p2))
-	assert.True(t, p2.implies(p1))
+	assert.True(t, p1.Implies(p2))
+	assert.True(t, p2.Implies(p1))
 }
 
 func TestWildcardPermissionImplies(t *testing.T) {
@@ -57,17 +57,17 @@ func TestWildcardPermissionImplies(t *testing.T) {
 	p2, _ := NewWildcardPermission("bar:2")
 	ap := new(AllPermission)
 
-	assert.False(t, pall.implies(ap))
+	assert.False(t, pall.Implies(ap))
 
-	assert.True(t, pall.implies(p1))
+	assert.True(t, pall.Implies(p1))
 
-	assert.True(t, p2all.implies(p2))
+	assert.True(t, p2all.Implies(p2))
 
-	assert.True(t, pall.implies(p2))
+	assert.True(t, pall.Implies(p2))
 
-	assert.False(t, p2.implies(p1))
+	assert.False(t, p2.Implies(p1))
 
-	assert.True(t, p1.implies(p2))
+	assert.True(t, p1.Implies(p2))
 }
 
 func TestWildcardPermissionImplies2(t *testing.T) {
@@ -75,9 +75,9 @@ func TestWildcardPermissionImplies2(t *testing.T) {
 	p2, _ := NewWildcardPermission("foo:BAR:3")
 	p3, _ := NewWildcardPermission("foo:BAR:4")
 
-	assert.True(t, p1.implies(p2))
+	assert.True(t, p1.Implies(p2))
 
-	assert.False(t, p1.implies(p3))
+	assert.False(t, p1.Implies(p3))
 
 }
 
@@ -101,12 +101,12 @@ func TestWildcardPermissionParsing(t *testing.T) {
 }
 
 func TestWildcardPermissionString(t *testing.T) {
-	p, err := NewWildcardPermission("foo:BAR:1,2")
+	p, err := NewWildcardPermission("foo:BAR:9,1,2,21,291,392")
 
 	assert.Nil(t, err)
 
 	s := p.String()
-	assert.True(t, s == "foo:bar:1,2" || s == "foo:bar:2,1")
+	assert.Equal(t, "foo:bar:1,2,21,291,392,9", s)
 }
 
 
@@ -116,38 +116,38 @@ func TestNamed(t *testing.T) {
 	// Case insensitive, same
 	p1,_ = NewWildcardPermission("something")
 	p2,_ = NewWildcardPermission("something")
-	assert.True(t, p1.implies(p2))
-	assert.True(t, p2.implies(p1))
+	assert.True(t, p1.Implies(p2))
+	assert.True(t, p2.Implies(p1))
 
 	// Case insensitive, different case
 	p1,_ = NewWildcardPermission("something")
 	p2,_ = NewWildcardPermission("SOMETHING")
-	assert.True(t, p1.implies(p2))
-	assert.True(t, p2.implies(p1))
+	assert.True(t, p1.Implies(p2))
+	assert.True(t, p2.Implies(p1))
 
 	// Case insensitive, different word
 	p1,_ = NewWildcardPermission("something")
 	p2,_ = NewWildcardPermission("else")
-	assert.False(t, p1.implies(p2))
-	assert.False(t, p2.implies(p1))
+	assert.False(t, p1.Implies(p2))
+	assert.False(t, p2.Implies(p1))
 /*
 	// Case sensitive same
 	p1 = NewWildcardPermission("BLAHBLAH", false)
 	p2 = NewWildcardPermission("BLAHBLAH", false)
-	assert.True(t, p1.implies(p2))
-	assert.True(t, p2.implies(p1))
+	assert.True(t, p1.Implies(p2))
+	assert.True(t, p2.Implies(p1))
 
 	// Case sensitive, different case
 	p1 = NewWildcardPermission("BLAHBLAH", false)
 	p2 = NewWildcardPermission("bLAHBLAH", false)
-	assert.True(t, p1.implies(p2))
-	assert.True(t, p2.implies(p1))
+	assert.True(t, p1.Implies(p2))
+	assert.True(t, p2.Implies(p1))
 
 	// Case sensitive, different word
 	p1 = NewWildcardPermission("BLAHBLAH", false)
 	p2 = NewWildcardPermission("whatwhat", false)
-	assert.False(t, p1.implies(p2))
-	assert.False(t, p2.implies(p1))
+	assert.False(t, p1.Implies(p2))
+	assert.False(t, p2.Implies(p1))
 	*/
 }
 
@@ -156,36 +156,36 @@ func TestLists(t *testing.T) {
 
 	p1,_ = NewWildcardPermission("one,two")
 	p2,_ = NewWildcardPermission("one")
-	assert.True(t,p1.implies(p2))
-	assert.False(t,p2.implies(p1))
+	assert.True(t,p1.Implies(p2))
+	assert.False(t,p2.Implies(p1))
 
 	p1,_ = NewWildcardPermission("one,two,three")
 	p2,_ = NewWildcardPermission("one,three")
-	assert.True(t,p1.implies(p2))
-	assert.False(t,p2.implies(p1))
+	assert.True(t,p1.Implies(p2))
+	assert.False(t,p2.Implies(p1))
 
 	p1,_ = NewWildcardPermission("one,two:one,two,three")
 	p2,_ = NewWildcardPermission("one:three")
 	p3,_ = NewWildcardPermission("one:two,three")
-	assert.True(t,p1.implies(p2))
-	assert.False(t,p2.implies(p1))
-	assert.True(t,p1.implies(p3))
-	assert.False(t,p2.implies(p3))
-	assert.True(t,p3.implies(p2))
+	assert.True(t,p1.Implies(p2))
+	assert.False(t,p2.Implies(p1))
+	assert.True(t,p1.Implies(p3))
+	assert.False(t,p2.Implies(p3))
+	assert.True(t,p3.Implies(p2))
 
 	p1,_ = NewWildcardPermission("one,two,three:one,two,three:one,two")
 	p2,_ = NewWildcardPermission("one:three:two")
-	assert.True(t,p1.implies(p2))
-	assert.False(t,p2.implies(p1))
+	assert.True(t,p1.Implies(p2))
+	assert.False(t,p2.Implies(p1))
 
 	p1,_ = NewWildcardPermission("one")
 	p2,_ = NewWildcardPermission("one:two,three,four")
 	p3,_ = NewWildcardPermission("one:two,three,four:five:six:seven")
-	assert.True(t,p1.implies(p2))
-	assert.True(t,p1.implies(p3))
-	assert.False(t,p2.implies(p1))
-	assert.False(t,p3.implies(p1))
-	assert.True(t,p2.implies(p3))
+	assert.True(t,p1.Implies(p2))
+	assert.True(t,p1.Implies(p3))
+	assert.False(t,p2.Implies(p1))
+	assert.False(t,p3.Implies(p1))
+	assert.True(t,p2.Implies(p3))
 
 }
 
@@ -197,10 +197,10 @@ func TestWildcards(t *testing.T) {
 	p3,_ = NewWildcardPermission("one:two")
 	p4,_ = NewWildcardPermission("one,two:three,four")
 	p5,_ = NewWildcardPermission("one,two:three,four,five:six:seven,eight")
-	assert.True(t,p1.implies(p2))
-	assert.True(t,p1.implies(p3))
-	assert.True(t,p1.implies(p4))
-	assert.True(t,p1.implies(p5))
+	assert.True(t,p1.Implies(p2))
+	assert.True(t,p1.Implies(p3))
+	assert.True(t,p1.Implies(p4))
+	assert.True(t,p1.Implies(p5))
 
 	p1,_ = NewWildcardPermission("newsletter:*")
 	p2,_ = NewWildcardPermission("newsletter:read")
@@ -210,31 +210,31 @@ func TestWildcards(t *testing.T) {
 	p6,_ = NewWildcardPermission("newsletter:*:read")
 	p7,_ = NewWildcardPermission("newsletter:write:*")
 	p8,_ = NewWildcardPermission("newsletter:read,write:*")
-	assert.True(t,p1.implies(p2))
-	assert.True(t,p1.implies(p3))
-	assert.True(t,p1.implies(p4))
-	assert.True(t,p1.implies(p5))
-	assert.True(t,p1.implies(p6))
-	assert.True(t,p1.implies(p7))
-	assert.True(t,p1.implies(p8))
+	assert.True(t,p1.Implies(p2))
+	assert.True(t,p1.Implies(p3))
+	assert.True(t,p1.Implies(p4))
+	assert.True(t,p1.Implies(p5))
+	assert.True(t,p1.Implies(p6))
+	assert.True(t,p1.Implies(p7))
+	assert.True(t,p1.Implies(p8))
 
 	p1,_ = NewWildcardPermission("newsletter:*:*")
-	assert.True(t,p1.implies(p2))
-	assert.True(t,p1.implies(p3))
-	assert.True(t,p1.implies(p4))
-	assert.True(t,p1.implies(p5))
-	assert.True(t,p1.implies(p6))
-	assert.True(t,p1.implies(p7))
-	assert.True(t,p1.implies(p8))
+	assert.True(t,p1.Implies(p2))
+	assert.True(t,p1.Implies(p3))
+	assert.True(t,p1.Implies(p4))
+	assert.True(t,p1.Implies(p5))
+	assert.True(t,p1.Implies(p6))
+	assert.True(t,p1.Implies(p7))
+	assert.True(t,p1.Implies(p8))
 
 	p1,_ = NewWildcardPermission("newsletter:*:*:*")
-	assert.True(t,p1.implies(p2))
-	assert.True(t,p1.implies(p3))
-	assert.True(t,p1.implies(p4))
-	assert.True(t,p1.implies(p5))
-	assert.True(t,p1.implies(p6))
-	assert.True(t,p1.implies(p7))
-	assert.True(t,p1.implies(p8))
+	assert.True(t,p1.Implies(p2))
+	assert.True(t,p1.Implies(p3))
+	assert.True(t,p1.Implies(p4))
+	assert.True(t,p1.Implies(p5))
+	assert.True(t,p1.Implies(p6))
+	assert.True(t,p1.Implies(p7))
+	assert.True(t,p1.Implies(p8))
 
 	p1,_ = NewWildcardPermission("newsletter:*:read")
 	p2,_ = NewWildcardPermission("newsletter:123:read")
@@ -242,14 +242,14 @@ func TestWildcards(t *testing.T) {
 	p4,_ = NewWildcardPermission("newsletter:read")
 	p5,_ = NewWildcardPermission("newsletter:read,write")
 	p6,_ = NewWildcardPermission("newsletter:123:read:write")
-	assert.True(t,p1.implies(p2))
-	assert.False(t,p1.implies(p3))
-	assert.False(t,p1.implies(p4))
-	assert.False(t,p1.implies(p5))
-	assert.True(t,p1.implies(p6))
+	assert.True(t,p1.Implies(p2))
+	assert.False(t,p1.Implies(p3))
+	assert.False(t,p1.Implies(p4))
+	assert.False(t,p1.Implies(p5))
+	assert.True(t,p1.Implies(p6))
 
 	p1,_ = NewWildcardPermission("newsletter:*:read:*")
-	assert.True(t,p1.implies(p2))
-	assert.True(t,p1.implies(p6))
+	assert.True(t,p1.Implies(p2))
+	assert.True(t,p1.Implies(p6))
 
 }

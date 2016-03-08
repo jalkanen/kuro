@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"errors"
 	"strings"
+	"sort"
+	"fmt"
 )
 
 const (
@@ -18,7 +20,8 @@ const (
 /*
  */
 type Permission interface {
-	implies(permission Permission) bool
+	Implies(permission Permission) bool
+	fmt.Stringer // One must implement "String()"
 }
 
 /*
@@ -27,8 +30,12 @@ type Permission interface {
 type AllPermission struct {
 }
 
-func (p AllPermission) implies(permission Permission) bool {
+func (p AllPermission) Implies(permission Permission) bool {
 	return true
+}
+
+func (p AllPermission) String() string {
+	return "*"
 }
 
 type WildcardPermission struct {
@@ -47,7 +54,7 @@ func NewWildcardPermission(parts string) (*WildcardPermission, error) {
 	return p, nil
 }
 
-func (w *WildcardPermission) implies(permission Permission) bool {
+func (w *WildcardPermission) Implies(permission Permission) bool {
 	otherPermission, ok := permission.(*WildcardPermission)
 	if !ok {
 		return false
@@ -141,8 +148,16 @@ func (w WildcardPermission) String() string {
 			buf.WriteString(WildcardSeparator)
 		}
 
-		subcount := 0
+		keys := make([]string, 0, len(p))
+
 		for key, _ := range p {
+			keys = append(keys,key)
+		}
+
+		sort.Strings(keys)
+		subcount := 0
+
+		for _,key := range keys {
 			if subcount > 0 {
 				buf.WriteString(WildcardSubSeparator)
 			}

@@ -30,11 +30,15 @@ func NewTokenRemember(username string, password string, remember bool) *Username
 	return t
 }
 
-func (w UsernamePasswordToken) Principal() interface{} {
+func (w *UsernamePasswordToken) Username() string {
 	return w.username
 }
 
-func (w UsernamePasswordToken) Credentials() interface{} {
+func (w *UsernamePasswordToken) Principal() interface{} {
+	return w.username
+}
+
+func (w *UsernamePasswordToken) Credentials() interface{} {
 	return w.password
 }
 

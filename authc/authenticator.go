@@ -3,7 +3,7 @@ package authc
 import ()
 
 type Authenticator interface {
-	Authenticate(AuthenticationToken) (Account, error)
+	Authenticate(AuthenticationToken) (AuthenticationInfo, error)
 }
 
 type IncorrectCredentialsError struct {
