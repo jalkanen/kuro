@@ -5,6 +5,7 @@ import (
 	"github.com/jalkanen/kuro/realm"
 	"github.com/jalkanen/kuro/authz"
 	"errors"
+	"log"
 )
 
 type SecurityManager interface {
@@ -16,9 +17,16 @@ type SecurityManager interface {
 }
 
 var Manager SecurityManager
+var Verbose bool = false
 
 func init() {
 	Manager = new(DefaultSecurityManager)
+}
+
+func logf(format string, vars ...interface{}) {
+	if Verbose {
+		log.Printf(format, vars)
+	}
 }
 
 type DefaultSecurityManager struct {
@@ -90,6 +98,8 @@ func (sm *DefaultSecurityManager) Login(subject Subject, token authc.Authenticat
 
 	for _,r := range sm.realms {
 		if r.Supports(token) {
+			logf("Attempting to log in user %s to realm %s", token.Principal(), r.Name())
+
 			ai, err := r.AuthenticationInfo(token)
 
 			// TODO: This is basically the "first realm that supports this token fails" -method
@@ -100,6 +110,8 @@ func (sm *DefaultSecurityManager) Login(subject Subject, token authc.Authenticat
 
 			d.principals = ai.Principals()
 			d.authenticated = true
+
+			logf("Login successful, got info: %v", ai)
 
 			return nil
 		}
