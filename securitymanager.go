@@ -25,7 +25,7 @@ func init() {
 
 func logf(format string, vars ...interface{}) {
 	if Verbose {
-		log.Printf(format, vars)
+		log.Printf("Kuro: " + format, vars...)
 	}
 }
 
@@ -35,6 +35,7 @@ type DefaultSecurityManager struct {
 
 // Replaces the realms with a single realm
 func (sm *DefaultSecurityManager) SetRealm(r realm.Realm) {
+	logf("Replacing all realms with new Realm %s", r.Name())
 	sm.realms = make([]realm.Realm, 1)
 	sm.realms[0] = r
 }
@@ -48,6 +49,8 @@ func (sm *DefaultSecurityManager) CreateSubject(ctx *SubjectContext) (Subject,er
 	sub := Delegator{
 		mgr: sm,
 	}
+
+	logf("Created new Subject: %v", sub)
 
 	return &sub,nil
 }
@@ -96,22 +99,29 @@ func (sm *DefaultSecurityManager) Login(subject Subject, token authc.Authenticat
 		return errors.New("The subject must have been created by this SecurityManager!")
 	}
 
+	if len(sm.realms) == 0 {
+		return errors.New("The SecurityManager has no Realms and is not configured properly")
+	}
+
+	logf("Login attempt by %s", token.Principal())
+
 	for _,r := range sm.realms {
 		if r.Supports(token) {
-			logf("Attempting to log in user %s to realm %s", token.Principal(), r.Name())
+			logf("Attempting to log in user '%s' to realm '%v'", token.Principal(), r.Name())
 
 			ai, err := r.AuthenticationInfo(token)
 
 			// TODO: This is basically the "first realm that supports this token fails" -method
 			//       It should really be a pluggable authenticator
 			if err != nil {
+				logf("Login failed for %s due to %s", token.Principal(), err.Error())
 				return err
 			}
 
 			d.principals = ai.Principals()
 			d.authenticated = true
 
-			logf("Login successful, got info: %v", ai)
+			logf("Login successful, got principal list: %v",subject)
 
 			return nil
 		}
@@ -126,6 +136,8 @@ func (sm *DefaultSecurityManager) Logout(subject Subject) error {
 	if !ok || d.mgr != sm {
 		return errors.New("The subject must have been created by this SecurityManager!")
 	}
+
+	logf("Logging out user '%s' (for Subject %v)", d.principals, d)
 
 	// Mark user logged out and clear the principals
 	d.authenticated = false

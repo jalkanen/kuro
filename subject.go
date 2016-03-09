@@ -36,6 +36,7 @@ var subjects map[interface{}]Subject = make(map[interface{}]Subject,64)
 // use something like *http.Request as the "where" interface.  Every call must be paired
 // with a corresponding call to Finish()
 // The Subject itself can be shared among goroutines.
+// This only works with the global SecurityManager
 func Get(where interface {}) Subject {
 	lock.Lock()
 	defer lock.Unlock()
@@ -47,6 +48,10 @@ func Get(where interface {}) Subject {
 		subject, _ = Manager.CreateSubject(&SubjectContext{})
 
 		subjects[where] = subject
+
+		logf("Get: Created new subject %v for %v", subject, where)
+	} else {
+		logf("Get: Returning existing subject %v for %v", subject, where)
 	}
 
 	return subject

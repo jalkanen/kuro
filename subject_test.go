@@ -27,7 +27,7 @@ func TestCreate(t *testing.T) {
 	sm = new(DefaultSecurityManager)
 	r, err := realm.NewIni("ini", strings.NewReader(ini))
 	sm.SetRealm(r)
-
+	Verbose = true
 	subject, _ := sm.CreateSubject( &SubjectContext{} )
 
 	assert.False(t,subject.IsAuthenticated())
@@ -35,7 +35,7 @@ func TestCreate(t *testing.T) {
 	err = subject.Login( authc.NewToken("user", "password") )
 
 	// Shouldn't work
-	assert.NotNil(t, err)
+	assert.NotNil(t, err, "got error", err)
 
 	assert.False(t,subject.IsAuthenticated())
 
@@ -68,4 +68,32 @@ func TestCreate(t *testing.T) {
 	assert.False(t, subject.IsPermitted("write:foo"), "Does not have write permission" )
 	assert.False(t, subject.IsPermitted("read:foo"), "Did get read permission" )
 
+}
+
+func TestGetSubject(t *testing.T) {
+	r, _ := realm.NewIni("ini", strings.NewReader(ini))
+	Manager.(*DefaultSecurityManager).SetRealm(r)
+	Verbose = true
+
+	var testif int64
+
+	subject := Get(&testif)
+
+	assert.NotNil(t, subject)
+
+	err := subject.Login(authc.NewToken("foo", "password"))
+
+	assert.Nil(t, err)
+
+	s2 := Get(&testif)
+
+	assert.True(t, s2.IsAuthenticated())
+
+	s2.Logout()
+
+	assert.False(t, subject.IsAuthenticated())
+
+	assert.Equal(t, subject, s2)
+
+	Finish(&testif)
 }
