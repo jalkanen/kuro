@@ -17,7 +17,7 @@ type SecurityManager interface {
 }
 
 var (
-	Manager SecurityManager
+	Manager *DefaultSecurityManager
 	Verbose bool = false
 )
 

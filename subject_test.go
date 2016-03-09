@@ -72,7 +72,7 @@ func TestCreate(t *testing.T) {
 
 func TestGetSubject(t *testing.T) {
 	r, _ := realm.NewIni("ini", strings.NewReader(ini))
-	Manager.(*DefaultSecurityManager).SetRealm(r)
+	Manager.SetRealm(r)
 	Verbose = true
 
 	var testif int64
