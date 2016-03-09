@@ -40,9 +40,9 @@ func Get(where interface {}) Subject {
 	lock.Lock()
 	defer lock.Unlock()
 
-	subject, ok := subjects[where]
+	subject := subjects[where]
 
-	if !ok {
+	if subject == nil {
 		// FIXME: Shouldn't ignore the error code
 		subject, _ = Manager.CreateSubject(&SubjectContext{})
 
