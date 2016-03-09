@@ -64,7 +64,18 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 				return nil,err
 			}
 
-			return ai,nil
+			// Perform credentials matching
+			ar, ok := r.(realm.AuthenticatingRealm)
+
+			if !ok {
+				return nil, errors.New("This realm does not support authenticating")
+			}
+
+			if match := ar.CredentialsMatcher().Match(token,ai); match {
+				return ai, nil
+			}
+
+			return nil, errors.New("Incorrect credentials given")
 		}
 	}
 

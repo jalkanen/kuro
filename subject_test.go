@@ -20,19 +20,28 @@ var ini string = `
   agroup= read:*
   manager = write:*, manage:*
 `
+var sm *DefaultSecurityManager
 
-func TestCreate(t *testing.T) {
-	var sm *DefaultSecurityManager
-
+func init() {
 	sm = new(DefaultSecurityManager)
-	r, err := realm.NewIni("ini", strings.NewReader(ini))
+	r, _ := realm.NewIni("ini", strings.NewReader(ini))
 	sm.SetRealm(r)
 	Verbose = true
+}
+
+func TestCreate(t *testing.T) {
 	subject, _ := sm.CreateSubject( &SubjectContext{} )
 
 	assert.False(t,subject.IsAuthenticated())
 
-	err = subject.Login( authc.NewToken("user", "password") )
+	err := subject.Login( authc.NewToken("user", "password") )
+
+	// Shouldn't work
+	assert.NotNil(t, err, "got error", err)
+
+	assert.False(t,subject.IsAuthenticated())
+
+	err = subject.Login( authc.NewToken("foo", "incorrect password") )
 
 	// Shouldn't work
 	assert.NotNil(t, err, "got error", err)
@@ -73,7 +82,6 @@ func TestCreate(t *testing.T) {
 func TestGetSubject(t *testing.T) {
 	r, _ := realm.NewIni("ini", strings.NewReader(ini))
 	Manager.SetRealm(r)
-	Verbose = true
 
 	var testif int64
 

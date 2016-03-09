@@ -49,7 +49,8 @@ func NewIni(name string, in io.Reader) (*IniRealm, error) {
 	realm := IniRealm{ SimpleAccountRealm{name: name} }
 	realm.users = make(map[string]authc.SimpleAccount)
 	realm.roles = make(map[string]authz.SimpleRole)
-
+	realm.credentialsMatcher = &credential.PlainText{}
+	
 	ini, err := ini.Load(in)
 
 	if err != nil {
