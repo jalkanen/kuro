@@ -16,8 +16,10 @@ type SecurityManager interface {
 	Logout(Subject) error
 }
 
-var Manager SecurityManager
-var Verbose bool = false
+var (
+	Manager SecurityManager
+	Verbose bool = false
+)
 
 func init() {
 	Manager = new(DefaultSecurityManager)
@@ -42,7 +44,31 @@ func (sm *DefaultSecurityManager) SetRealm(r realm.Realm) {
 
 
 func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) (authc.AuthenticationInfo, error){
-	return nil, errors.New("Unimplemented")
+
+	if len(sm.realms) == 0 {
+		return nil,errors.New("The SecurityManager has no Realms and is not configured properly")
+	}
+
+	logf("Authenticating %s", token.Principal())
+
+	for _,r := range sm.realms {
+		if r.Supports(token) {
+			logf("Authenticating '%s' against realm '%v'", token.Principal(), r.Name())
+
+			ai, err := r.AuthenticationInfo(token)
+
+			// TODO: This is basically the "first realm that supports this token fails" -method
+			//       It should really be a pluggable authenticator
+			if err != nil {
+				logf("Login failed for %s due to %s", token.Principal(), err.Error())
+				return nil,err
+			}
+
+			return ai,nil
+		}
+	}
+
+	return nil,errors.New("Unknown user account") // FIXME: Return proper error type
 }
 
 func (sm *DefaultSecurityManager) CreateSubject(ctx *SubjectContext) (Subject,error) {
@@ -99,35 +125,20 @@ func (sm *DefaultSecurityManager) Login(subject Subject, token authc.Authenticat
 		return errors.New("The subject must have been created by this SecurityManager!")
 	}
 
-	if len(sm.realms) == 0 {
-		return errors.New("The SecurityManager has no Realms and is not configured properly")
-	}
-
 	logf("Login attempt by %s", token.Principal())
 
-	for _,r := range sm.realms {
-		if r.Supports(token) {
-			logf("Attempting to log in user '%s' to realm '%v'", token.Principal(), r.Name())
+	ai, err := sm.Authenticate(token)
 
-			ai, err := r.AuthenticationInfo(token)
+	if err == nil {
+		d.principals = ai.Principals()
+		d.authenticated = true
 
-			// TODO: This is basically the "first realm that supports this token fails" -method
-			//       It should really be a pluggable authenticator
-			if err != nil {
-				logf("Login failed for %s due to %s", token.Principal(), err.Error())
-				return err
-			}
+		logf("Login successful, got principal list: %v",subject)
 
-			d.principals = ai.Principals()
-			d.authenticated = true
-
-			logf("Login successful, got principal list: %v",subject)
-
-			return nil
-		}
+		return nil
 	}
 
-	return errors.New("Unknown user account") // FIXME: Return proper error type
+	return err
 }
 
 func (sm *DefaultSecurityManager) Logout(subject Subject) error {
