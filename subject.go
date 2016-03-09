@@ -4,6 +4,7 @@ import (
 	"github.com/jalkanen/kuro/authz"
 	"github.com/jalkanen/kuro/session"
 	"github.com/jalkanen/kuro/authc"
+	"sync"
 )
 
 type Subject interface {
@@ -17,10 +18,6 @@ type Subject interface {
 	Logout()
 }
 
-type Store interface {
-	Current() Subject
-}
-
 type Delegator struct {
 	principals []interface{}
 	mgr SecurityManager
@@ -28,8 +25,45 @@ type Delegator struct {
 	session session.Session
 }
 
-func New(securityManager SecurityManager) Subject {
+func NewSubject(securityManager SecurityManager) Subject {
 	return &Delegator{mgr: securityManager, principals: make([]interface{},0,16)}
+}
+
+var lock sync.Mutex
+var subjects map[interface{}]Subject = make(map[interface{}]Subject,64)
+
+// Gets the current subject which is related to the given object. Typically, you would
+// use something like *http.Request as the "where" interface.  Every call must be paired
+// with a corresponding call to Finish()
+// The Subject itself can be shared among goroutines.
+func Get(where interface {}) Subject {
+	lock.Lock()
+	defer lock.Unlock()
+
+	subject, ok := subjects[where]
+
+	if !ok {
+		// FIXME: Shouldn't ignore the error code
+		subject, _ = Manager.CreateSubject(&SubjectContext{})
+
+		subjects[where] = subject
+	}
+
+	return subject
+}
+
+func With(where interface{}, s Subject) {
+	lock.Lock()
+	defer lock.Unlock()
+
+	subjects[where] = s
+}
+
+// Must be called at the end of the request to clear the current subject
+func Finish(where interface{}) {
+	lock.Lock()
+	defer lock.Unlock()
+	subjects[where] = nil
 }
 
 // TODO: Should return something else in error?

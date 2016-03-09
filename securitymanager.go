@@ -15,14 +15,14 @@ type SecurityManager interface {
 	Logout(Subject) error
 }
 
-type DefaultSecurityManager struct {
-	realms []realm.Realm
+var Manager SecurityManager
+
+func init() {
+	Manager = new(DefaultSecurityManager)
 }
 
-func NewManager() SecurityManager {
-	mgr := new(DefaultSecurityManager)
-
-	return mgr
+type DefaultSecurityManager struct {
+	realms []realm.Realm
 }
 
 // Replaces the realms with a single realm
