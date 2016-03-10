@@ -78,7 +78,7 @@ func TestCreate(t *testing.T) {
 	assert.False(t, subject.IsPermitted("read:foo"), "Did get read permission" )
 
 }
-
+/*
 func TestGetSubject(t *testing.T) {
 	r, _ := realm.NewIni("ini", strings.NewReader(ini))
 	Manager.SetRealm(r)
@@ -104,11 +104,14 @@ func TestGetSubject(t *testing.T) {
 	assert.Equal(t, subject, s2)
 
 	Finish(&testif)
-}
+}*/
 
+/*
 func TestSession(t *testing.T) {
 	r, _ := realm.NewIni("ini", strings.NewReader(ini))
 	Manager.SetRealm(r)
+
+	session.Verbose = true
 
 	var testif int64
 
@@ -122,4 +125,6 @@ func TestSession(t *testing.T) {
 	session.Set("blab", 123)
 
 	assert.Equal(t, 123, session.Get("blab"))
+
 }
+*/

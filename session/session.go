@@ -1,14 +1,48 @@
 package session
 
 import (
+	"fmt"
+	"net/http"
 	"sync"
+	"time"
 )
 
+type Key interface {
+	Id() string
+}
+
+type SimpleKey struct {
+	id string
+}
+
+func (s SimpleKey) Id() string {
+	return s.id
+}
+
+func NewKey(s string) SimpleKey {
+	return SimpleKey{s}
+}
+
+type WebKey struct {
+	SimpleKey
+	Request  *http.Request
+	Response http.ResponseWriter
+}
+
+func NewWebKey(id string, r *http.Request, w http.ResponseWriter) WebKey {
+	return WebKey{
+		SimpleKey: NewKey(id),
+		Request: r,
+		Response: w,
+	}
+}
+
 type Session interface {
-	Key() string
+	Id() string
 	IsValid() bool
 	Get(interface{}) interface{}
 	Set(interface{}, interface{})
+	Save()
 }
 
 //
@@ -19,14 +53,23 @@ type DefaultSession struct {
 	attributes map[interface{}]interface{} `json:"attributes"`
 	valid      bool                        `json:"valid"`
 	lock       sync.Mutex                  `json:"-"`
+	expires    time.Time                   `json:"expires"`
 }
 
-func (s *DefaultSession) Key() string {
+func NewDefault(timeout time.Duration) *DefaultSession {
+	return &DefaultSession{
+		sessionid:  randomKey(),
+		expires:    time.Now().Add(timeout),
+		attributes: make(map[interface{}]interface{}, 8),
+	}
+}
+
+func (s *DefaultSession) Id() string {
 	return s.sessionid
 }
 
 func (s *DefaultSession) IsValid() bool {
-	return s.valid
+	return s.valid && s.expires.After(time.Now())
 }
 
 func (s *DefaultSession) Get(key interface{}) interface{} {
@@ -41,4 +84,13 @@ func (s *DefaultSession) Set(key interface{}, value interface{}) {
 	defer s.lock.Unlock()
 
 	s.attributes[key] = value
+}
+
+func (s *DefaultSession) Save() {
+	// DefaultSession does not store its data anywhere
+}
+
+// For Stringer, returns a nice pretty version of the session.
+func (s *DefaultSession) String() string {
+	return fmt.Sprintf("Session[%s, expires=%s]", s.sessionid, s.expires)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/jalkanen/kuro/realm"
 	"github.com/jalkanen/kuro/session"
 	"log"
+	"time"
 )
 
 type SecurityManager interface {
@@ -25,7 +26,7 @@ var (
 
 func init() {
 	Manager = new(DefaultSecurityManager)
-	Manager.sessionManager = session.NewMemory()
+	Manager.sessionManager = session.NewMemory(30*time.Minute)
 }
 
 func logf(format string, vars ...interface{}) {
@@ -48,6 +49,10 @@ func (sm *DefaultSecurityManager) SetRealm(r realm.Realm) {
 
 func (sm *DefaultSecurityManager) SessionManager() session.SessionManager {
 	return sm.sessionManager
+}
+
+func (sm *DefaultSecurityManager) SetSessionManager(s session.SessionManager) {
+	sm.sessionManager = s
 }
 
 func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) (authc.AuthenticationInfo, error) {
@@ -90,13 +95,11 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 }
 
 func (sm *DefaultSecurityManager) CreateSubject(ctx *SubjectContext) (Subject, error) {
-	sub := Delegator{
-		mgr: sm,
-	}
+	sub := newSubject(sm, *ctx)
 
 	logf("Created new Subject: %v", sub)
 
-	return &sub, nil
+	return sub, nil
 }
 
 func (sm *DefaultSecurityManager) HasRole(principals []interface{}, role string) bool {
@@ -167,6 +170,10 @@ func (sm *DefaultSecurityManager) Logout(subject Subject) error {
 	}
 
 	logf("Logging out user '%s' (for Subject %v)", d.principals, d)
+
+	if sm.sessionManager != nil && d.session != nil {
+		sm.sessionManager.Invalidate(session.NewKey(d.session.Id()))
+	}
 
 	// Mark user logged out and clear the principals
 	d.authenticated = false

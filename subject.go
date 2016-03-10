@@ -5,6 +5,12 @@ import (
 	"github.com/jalkanen/kuro/authz"
 	"github.com/jalkanen/kuro/session"
 	"sync"
+	"fmt"
+	"net/http"
+)
+
+const (
+	SubjectKey = "__kuro_subject"
 )
 
 type Subject interface {
@@ -25,8 +31,19 @@ type Delegator struct {
 	session       session.Session
 }
 
-func NewSubject(securityManager SecurityManager) Subject {
-	return &Delegator{mgr: securityManager, principals: make([]interface{}, 0, 16)}
+func newSubject(securityManager SecurityManager, ctx SubjectContext) Subject {
+	d := Delegator{
+		mgr: securityManager,
+		principals: make([]interface{}, 0, 16),
+	}
+
+	if securityManager.SessionManager() != nil && ctx.CreateSessions {
+		sesCtx := NewSessionContext(ctx)
+
+		d.session = securityManager.SessionManager().Start(&sesCtx)
+	}
+
+	return &d
 }
 
 var lock sync.Mutex
@@ -37,27 +54,47 @@ var subjects map[interface{}]Subject = make(map[interface{}]Subject, 64)
 // with a corresponding call to Finish()
 // The Subject itself can be shared among goroutines.
 // This only works with the global SecurityManager
-func Get(where interface{}) Subject {
+func Get(r *http.Request, w http.ResponseWriter) Subject {
 	lock.Lock()
-	defer lock.Unlock()
+	lock.Unlock()
 
-	subject := subjects[where]
+	subject := subjects[r]
 
 	if subject == nil {
-		// FIXME: Shouldn't ignore the error code
-		subject, _ = Manager.CreateSubject(&SubjectContext{})
 
-		subjects[where] = subject
+		if Manager.sessionManager != nil {
 
-		logf("Get: Created new subject %v for %v", subject, where)
+			key := session.NewWebKey("", r, w)
+			v := Manager.sessionManager.Get(key)
+
+			sessionSubject, ok := v.(Subject)
+
+			if ok {
+				subject = sessionSubject
+				logf("Get: Returning existing subject (from session) %v for %v", subject, r)
+			}
+		}
+
+		if subject == nil {
+			// FIXME: Shouldn't ignore the error code
+			subject, _ = Manager.CreateSubject(&SubjectContext{
+				CreateSessions: true,
+				Request: r,
+				ResponseWriter: w,
+			})
+			logf("Get: Created new subject %v for %v", subject, r)
+		}
+
+		// Store this one for the request to avoid further calls to the session
+		subjects[r] = subject
 	} else {
-		logf("Get: Returning existing subject %v for %v", subject, where)
+		logf("Get: Returning existing subject %v for %v", subject, r)
 	}
 
 	return subject
 }
 
-func With(where interface{}, s Subject) {
+func With(where http.Request, s Subject) {
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -65,10 +102,10 @@ func With(where interface{}, s Subject) {
 }
 
 // Must be called at the end of the request to clear the current subject
-func Finish(where interface{}) {
+func Finish(where http.Request) {
 	lock.Lock()
 	defer lock.Unlock()
-	subjects[where] = nil
+	delete(subjects,where)
 }
 
 // TODO: Should return something else in error?
@@ -115,4 +152,30 @@ func (s *Delegator) Login(token authc.AuthenticationToken) error {
 
 func (s *Delegator) Logout() {
 	s.mgr.Logout(s)
+}
+
+// Stringer. Outputs a nicer version of the subject's principals and whether it is authenticated or not.
+func (s *Delegator) String() string {
+	return fmt.Sprintf("Subject%s(%t)", s.principals, s.authenticated)
+}
+
+// Load and store the Subject into the store itself.  In practice, all
+// we need to store are the principals and whether the user is authenticated
+// or not.
+func (s *Delegator) store() {
+	session := s.Session()
+
+	session.Set("__principals", s.principals)
+	session.Set("__authenticated", s.authenticated)
+
+	session.Save()
+}
+
+func (s *Delegator) load() *Delegator {
+	session := s.Session()
+
+	s.principals = session.Get("__principals").([]interface{})
+	s.authenticated = session.Get("__authenticated").(bool)
+
+	return s
 }
