@@ -1,10 +1,11 @@
 package kuro
 
 import (
-	"github.com/jalkanen/kuro/authc"
-	"github.com/jalkanen/kuro/realm"
-	"github.com/jalkanen/kuro/authz"
 	"errors"
+	"github.com/jalkanen/kuro/authc"
+	"github.com/jalkanen/kuro/authz"
+	"github.com/jalkanen/kuro/realm"
+	"github.com/jalkanen/kuro/session"
 	"log"
 )
 
@@ -14,6 +15,7 @@ type SecurityManager interface {
 	CreateSubject(context *SubjectContext) (Subject, error)
 	Login(Subject, authc.AuthenticationToken) error
 	Logout(Subject) error
+	SessionManager() session.SessionManager
 }
 
 var (
@@ -23,16 +25,18 @@ var (
 
 func init() {
 	Manager = new(DefaultSecurityManager)
+	Manager.sessionManager = session.NewMemory()
 }
 
 func logf(format string, vars ...interface{}) {
 	if Verbose {
-		log.Printf("Kuro: " + format, vars...)
+		log.Printf("Kuro: "+format, vars...)
 	}
 }
 
 type DefaultSecurityManager struct {
-	realms []realm.Realm
+	realms         []realm.Realm
+	sessionManager session.SessionManager
 }
 
 // Replaces the realms with a single realm
@@ -42,16 +46,19 @@ func (sm *DefaultSecurityManager) SetRealm(r realm.Realm) {
 	sm.realms[0] = r
 }
 
+func (sm *DefaultSecurityManager) SessionManager() session.SessionManager {
+	return sm.sessionManager
+}
 
-func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) (authc.AuthenticationInfo, error){
+func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) (authc.AuthenticationInfo, error) {
 
 	if len(sm.realms) == 0 {
-		return nil,errors.New("The SecurityManager has no Realms and is not configured properly")
+		return nil, errors.New("The SecurityManager has no Realms and is not configured properly")
 	}
 
 	logf("Authenticating %s", token.Principal())
 
-	for _,r := range sm.realms {
+	for _, r := range sm.realms {
 		if r.Supports(token) {
 			logf("Authenticating '%s' against realm '%v'", token.Principal(), r.Name())
 
@@ -61,7 +68,7 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 			//       It should really be a pluggable authenticator
 			if err != nil {
 				logf("Login failed for %s due to %s", token.Principal(), err.Error())
-				return nil,err
+				return nil, err
 			}
 
 			// Perform credentials matching
@@ -71,7 +78,7 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 				return nil, errors.New("This realm does not support authenticating")
 			}
 
-			if match := ar.CredentialsMatcher().Match(token,ai); match {
+			if match := ar.CredentialsMatcher().Match(token, ai); match {
 				return ai, nil
 			}
 
@@ -79,22 +86,22 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 		}
 	}
 
-	return nil,errors.New("Unknown user account") // FIXME: Return proper error type
+	return nil, errors.New("Unknown user account") // FIXME: Return proper error type
 }
 
-func (sm *DefaultSecurityManager) CreateSubject(ctx *SubjectContext) (Subject,error) {
+func (sm *DefaultSecurityManager) CreateSubject(ctx *SubjectContext) (Subject, error) {
 	sub := Delegator{
 		mgr: sm,
 	}
 
 	logf("Created new Subject: %v", sub)
 
-	return &sub,nil
+	return &sub, nil
 }
 
 func (sm *DefaultSecurityManager) HasRole(principals []interface{}, role string) bool {
 
-	for _,re := range sm.realms {
+	for _, re := range sm.realms {
 		r, ok := re.(realm.AuthorizingRealm)
 
 		if ok && r.HasRole(principals, role) {
@@ -106,7 +113,7 @@ func (sm *DefaultSecurityManager) HasRole(principals []interface{}, role string)
 }
 
 func (sm *DefaultSecurityManager) IsPermittedP(principals []interface{}, permission authz.Permission) bool {
-	for _,re := range sm.realms {
+	for _, re := range sm.realms {
 		r, ok := re.(realm.AuthorizingRealm)
 
 		if ok && r.IsPermittedP(principals, permission) {
@@ -118,7 +125,7 @@ func (sm *DefaultSecurityManager) IsPermittedP(principals []interface{}, permiss
 }
 
 func (sm *DefaultSecurityManager) IsPermitted(principals []interface{}, permission string) bool {
-	for _,re := range sm.realms {
+	for _, re := range sm.realms {
 		r, ok := re.(realm.AuthorizingRealm)
 
 		if ok && r.IsPermitted(principals, permission) {
@@ -144,7 +151,7 @@ func (sm *DefaultSecurityManager) Login(subject Subject, token authc.Authenticat
 		d.principals = ai.Principals()
 		d.authenticated = true
 
-		logf("Login successful, got principal list: %v",subject)
+		logf("Login successful, got principal list: %v", subject)
 
 		return nil
 	}

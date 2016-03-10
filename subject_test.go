@@ -105,3 +105,21 @@ func TestGetSubject(t *testing.T) {
 
 	Finish(&testif)
 }
+
+func TestSession(t *testing.T) {
+	r, _ := realm.NewIni("ini", strings.NewReader(ini))
+	Manager.SetRealm(r)
+
+	var testif int64
+
+	subject := Get(&testif)
+
+	session := subject.Session()
+	assert.NotNil(t,session)
+
+	assert.Nil(t, session.Get("blab"))
+
+	session.Set("blab", 123)
+
+	assert.Equal(t, 123, session.Get("blab"))
+}

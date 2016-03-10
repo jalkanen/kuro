@@ -1,22 +1,24 @@
 package session
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"sync"
 )
 
 type Session interface {
 	Key() string
 	IsValid() bool
-	//	Attr(interface{}) interface{}
-	//	SetAttr(interface{}, interface{})
+	Get(interface{}) interface{}
+	Set(interface{}, interface{})
 }
 
+//
+//  DefaultSession is a simple serializable construct.
+//
 type DefaultSession struct {
-	sessionid  string
-	attributes map[interface{}]interface{}
-	valid      bool
+	sessionid  string	`json:"id"`
+	attributes map[interface{}]interface{} `json:"attributes"`
+	valid      bool `json:"valid"`
+	lock       sync.Mutex `json:"-"`
 }
 
 func (s *DefaultSession) Key() string {
@@ -27,55 +29,17 @@ func (s *DefaultSession) IsValid() bool {
 	return s.valid
 }
 
-type SessionContext struct {
+func (s *DefaultSession) Get(key interface{}) interface{} {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	return s.attributes[key]
 }
 
-type SessionManager interface {
-	Start(*SessionContext) Session
-	Get(key string) Session
-	Invalidate(key string)
+func (s *DefaultSession) Set(key interface{}, value interface{}) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.attributes[key] = value
 }
 
-type MemorySessionManager struct {
-	lock     sync.Mutex
-	sessions map[string]*DefaultSession
-}
-
-func randomKey() string {
-	buf := make([]byte, 24)
-
-	rand.Read(buf)
-
-	return hex.EncodeToString(buf)
-}
-
-func (sm *MemorySessionManager) Start(ctx *SessionContext) Session {
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-
-	s := &DefaultSession{sessionid: randomKey()}
-
-	sm.sessions[s.sessionid] = s
-
-	return s
-}
-
-func (sm *MemorySessionManager) Get(key string) Session {
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-
-	return sm.sessions[key]
-}
-
-func (sm *MemorySessionManager) Invalidate(key string) {
-	sm.lock.Lock()
-	defer sm.lock.Unlock()
-
-	d := sm.sessions[key]
-
-	if d != nil {
-		d.valid = false
-	}
-
-	sm.sessions[key] = nil
-}

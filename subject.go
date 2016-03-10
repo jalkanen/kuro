@@ -1,9 +1,9 @@
 package kuro
 
 import (
+	"github.com/jalkanen/kuro/authc"
 	"github.com/jalkanen/kuro/authz"
 	"github.com/jalkanen/kuro/session"
-	"github.com/jalkanen/kuro/authc"
 	"sync"
 )
 
@@ -19,25 +19,25 @@ type Subject interface {
 }
 
 type Delegator struct {
-	principals []interface{}
-	mgr SecurityManager
+	principals    []interface{}
+	mgr           SecurityManager
 	authenticated bool
-	session session.Session
+	session       session.Session
 }
 
 func NewSubject(securityManager SecurityManager) Subject {
-	return &Delegator{mgr: securityManager, principals: make([]interface{},0,16)}
+	return &Delegator{mgr: securityManager, principals: make([]interface{}, 0, 16)}
 }
 
 var lock sync.Mutex
-var subjects map[interface{}]Subject = make(map[interface{}]Subject,64)
+var subjects map[interface{}]Subject = make(map[interface{}]Subject, 64)
 
 // Gets the current subject which is related to the given object. Typically, you would
 // use something like *http.Request as the "where" interface.  Every call must be paired
 // with a corresponding call to Finish()
 // The Subject itself can be shared among goroutines.
 // This only works with the global SecurityManager
-func Get(where interface {}) Subject {
+func Get(where interface{}) Subject {
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -81,11 +81,15 @@ func (s *Delegator) Principal() interface{} {
 }
 
 func (s *Delegator) Session() session.Session {
+	if s.session == nil {
+		s.session = s.mgr.SessionManager().Start(&session.SessionContext{})
+	}
+
 	return s.session
 }
 
 func (s *Delegator) HasRole(role string) bool {
-	return s.hasPrincipals() && s.mgr.HasRole( s.principals, role )
+	return s.hasPrincipals() && s.mgr.HasRole(s.principals, role)
 }
 
 func (s *Delegator) IsAuthenticated() bool {
@@ -94,11 +98,11 @@ func (s *Delegator) IsAuthenticated() bool {
 
 // Swallows the error in case for simplicity
 func (s *Delegator) IsPermitted(permission string) bool {
-	return s.hasPrincipals() && s.mgr.IsPermitted( s.principals, permission )
+	return s.hasPrincipals() && s.mgr.IsPermitted(s.principals, permission)
 }
 
 func (s *Delegator) IsPermittedP(permission authz.Permission) bool {
-	return s.hasPrincipals() && s.mgr.IsPermittedP( s.principals, permission )
+	return s.hasPrincipals() && s.mgr.IsPermittedP(s.principals, permission)
 }
 
 func (s *Delegator) hasPrincipals() bool {
