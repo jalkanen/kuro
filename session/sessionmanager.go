@@ -1,9 +1,9 @@
 package session
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"sync"
-	"crypto/rand"
 )
 
 type SessionContext struct {
@@ -31,7 +31,7 @@ func randomKey() string {
 // Returns a new Memory-based Session Manager
 func NewMemory() *MemorySessionManager {
 	return &MemorySessionManager{
-		sessions : make(map[string]*DefaultSession,64),
+		sessions: make(map[string]*DefaultSession, 64),
 	}
 }
 
@@ -40,7 +40,7 @@ func (sm *MemorySessionManager) Start(ctx *SessionContext) Session {
 	defer sm.lock.Unlock()
 
 	s := &DefaultSession{
-		sessionid: randomKey(),
+		sessionid:  randomKey(),
 		attributes: make(map[interface{}]interface{}, 8),
 	}
 
