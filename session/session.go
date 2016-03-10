@@ -15,10 +15,10 @@ type Session interface {
 //  DefaultSession is a simple serializable construct.
 //
 type DefaultSession struct {
-	sessionid  string	`json:"id"`
+	sessionid  string                      `json:"id"`
 	attributes map[interface{}]interface{} `json:"attributes"`
-	valid      bool `json:"valid"`
-	lock       sync.Mutex `json:"-"`
+	valid      bool                        `json:"valid"`
+	lock       sync.Mutex                  `json:"-"`
 }
 
 func (s *DefaultSession) Key() string {
@@ -42,4 +42,3 @@ func (s *DefaultSession) Set(key interface{}, value interface{}) {
 
 	s.attributes[key] = value
 }
-
