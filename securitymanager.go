@@ -157,6 +157,10 @@ func (sm *DefaultSecurityManager) Login(subject Subject, token authc.Authenticat
 
 		logf("Login successful, got principal list: %v", subject)
 
+		if sm.sessionManager != nil {
+			d.store()
+		}
+
 		return nil
 	}
 
@@ -172,6 +176,10 @@ func (sm *DefaultSecurityManager) Logout(subject Subject) error {
 
 	logf("Logging out user '%s' (for Subject %v)", d.principals, d)
 
+	// Mark user logged out and clear the principals
+	d.authenticated = false
+	d.principals = make([]interface{}, 0, 16)
+
 	if sm.sessionManager != nil && d.session != nil {
 		if ha, ok := d.session.(http.HTTPAware); ok {
 			sm.sessionManager.Invalidate(session.NewWebKey(d.session.Id(), ha.Request(), ha.Response()))
@@ -179,10 +187,6 @@ func (sm *DefaultSecurityManager) Logout(subject Subject) error {
 			sm.sessionManager.Invalidate(session.NewKey(d.session.Id()))
 		}
 	}
-
-	// Mark user logged out and clear the principals
-	d.authenticated = false
-	d.principals = make([]interface{}, 0, 16)
 
 	return nil
 }
