@@ -94,7 +94,7 @@ func Get(r *http.Request, w http.ResponseWriter) Subject {
 	return subject
 }
 
-func With(where http.Request, s Subject) {
+func With(where *http.Request, s Subject) {
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -102,7 +102,7 @@ func With(where http.Request, s Subject) {
 }
 
 // Must be called at the end of the request to clear the current subject
-func Finish(where http.Request) {
+func Finish(where *http.Request) {
 	lock.Lock()
 	defer lock.Unlock()
 	delete(subjects,where)
