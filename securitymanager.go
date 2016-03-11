@@ -100,6 +100,13 @@ func (sm *DefaultSecurityManager) CreateSubject(ctx *SubjectContext) (Subject, e
 
 	logf("Created new Subject: %v", sub)
 
+
+	if sm.SessionManager() != nil && ctx.CreateSessions {
+		sesCtx := NewSessionContext(*ctx)
+
+		sub.session = sm.SessionManager().Start(&sesCtx)
+	}
+
 	return sub, nil
 }
 

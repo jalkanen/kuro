@@ -31,16 +31,10 @@ type Delegator struct {
 	session       session.Session
 }
 
-func newSubject(securityManager SecurityManager, ctx SubjectContext) Subject {
+func newSubject(securityManager SecurityManager, ctx SubjectContext) *Delegator {
 	d := Delegator{
 		mgr: securityManager,
 		principals: make([]interface{}, 0, 16),
-	}
-
-	if securityManager.SessionManager() != nil && ctx.CreateSessions {
-		sesCtx := NewSessionContext(ctx)
-
-		d.session = securityManager.SessionManager().Start(&sesCtx)
 	}
 
 	return &d
@@ -64,7 +58,7 @@ func Get(r *http.Request, w http.ResponseWriter) Subject {
 
 		if Manager.sessionManager != nil {
 
-			key := session.NewWebKey("", r, w)
+			key := session.NewWebKey("ignoreme", r, w)
 			v := Manager.sessionManager.Get(key)
 
 			sessionSubject, ok := v.(Subject)
@@ -72,17 +66,21 @@ func Get(r *http.Request, w http.ResponseWriter) Subject {
 			if ok {
 				subject = sessionSubject
 				logf("Get: Returning existing subject (from session) %v for %v", subject, r)
+			} else {
+				logf("Get: Could not locate subject from session")
 			}
 		}
 
 		if subject == nil {
 			// FIXME: Shouldn't ignore the error code
-			subject, _ = Manager.CreateSubject(&SubjectContext{
+			sc := SubjectContext{
 				CreateSessions: true,
 				Request: r,
 				ResponseWriter: w,
-			})
+			}
+			subject, _ = Manager.CreateSubject(&sc)
 			logf("Get: Created new subject %v for %v", subject, r)
+
 		}
 
 		// Store this one for the request to avoid further calls to the session

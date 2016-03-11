@@ -34,7 +34,6 @@ func (g *Session) Get(key interface{}) interface{} {
 }
 
 func (g *Session) Set(key interface{}, val interface{}) {
-	fmt.Printf("Setting '%s' to '%v'\n", key, val)
 	g.gsession.Values[key] = val
 	g.dirty = true
 }
