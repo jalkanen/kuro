@@ -18,12 +18,7 @@ type Session struct {
 	gsession *sessions.Session
 	request  *http.Request
 	response http.ResponseWriter
-}
-
-func NewGorilla( gs *sessions.Session ) *Session {
-	return &Session{
-		gsession: gs,
-	}
+	dirty    bool
 }
 
 func (g *Session) Id() string {
@@ -41,14 +36,18 @@ func (g *Session) Get(key interface{}) interface{} {
 func (g *Session) Set(key interface{}, val interface{}) {
 	fmt.Printf("Setting '%s' to '%v'\n", key, val)
 	g.gsession.Values[key] = val
+	g.dirty = true
 }
 
 func (g *Session) Save() {
-	fmt.Println("Storing session to gorilla")
-	err := g.gsession.Save( g.request, g.response )
 
-	if err != nil {
-		fmt.Println("Cannot store to session: %v", err)
+	if g.dirty {
+		err := g.gsession.Save(g.request, g.response)
+		g.dirty = false
+
+		if err != nil {
+			fmt.Println("Cannot store to session: %v", err)
+		}
 	}
 }
 
@@ -82,6 +81,7 @@ func (g *SessionManager) Start(ctx *session.SessionContext) session.Session {
 		gsession: s,
 		request: ctx.Request,
 		response: ctx.Response,
+		dirty: true,
 	}
 }
 
@@ -95,6 +95,7 @@ func (g *SessionManager) Get(key session.Key) session.Session {
 		gsession: s,
 		request: k.Request,
 		response: k.Response,
+		dirty: false,
 	}
 }
 
