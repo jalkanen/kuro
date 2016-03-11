@@ -56,32 +56,18 @@ func Get(r *http.Request, w http.ResponseWriter) Subject {
 
 	if subject == nil {
 
-		if Manager.sessionManager != nil {
+		sc := SubjectContext{
+			CreateSessions: true,
+			Request: r,
+			ResponseWriter: w,
+		}
+		subject, _ = Manager.CreateSubject(&sc)
 
-			key := session.NewWebKey("ignoreme", r, w)
-			v := Manager.sessionManager.Get(key)
-
-			sessionSubject, ok := v.(Subject)
-
-			if ok {
-				subject = sessionSubject
-				logf("Get: Returning existing subject (from session) %v for %v", subject, r)
-			} else {
-				logf("Get: Could not locate subject from session")
-			}
+		if d, ok := subject.(*Delegator); ok {
+			d.load()
 		}
 
-		if subject == nil {
-			// FIXME: Shouldn't ignore the error code
-			sc := SubjectContext{
-				CreateSessions: true,
-				Request: r,
-				ResponseWriter: w,
-			}
-			subject, _ = Manager.CreateSubject(&sc)
-			logf("Get: Created new subject %v for %v", subject, r)
-
-		}
+		logf("Get: Created new subject %v for %v", subject, r)
 
 		// Store this one for the request to avoid further calls to the session
 		subjects[r] = subject
@@ -172,8 +158,15 @@ func (s *Delegator) store() {
 func (s *Delegator) load() *Delegator {
 	session := s.Session()
 
-	s.principals = session.Get("__principals").([]interface{})
-	s.authenticated = session.Get("__authenticated").(bool)
+	if session != nil {
+		if p := session.Get("__principals"); p != nil {
+			s.principals = p.([]interface{})
+		}
+
+		if a := session.Get("__authenticated"); a != nil {
+			s.authenticated = a.(bool)
+		}
+	}
 
 	return s
 }
