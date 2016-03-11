@@ -9,6 +9,7 @@ import (
 	"io"
 	"strings"
 	"fmt"
+	"encoding/gob"
 )
 
 // Realms are essentially user, role and permission databases.
@@ -44,13 +45,18 @@ type IniRealm struct {
 	SimpleAccountRealm
 }
 
+func init() {
+	var s stringer
+	gob.Register(s)
+}
+
 // Creates a new IniRealm, reading from a Reader.
 func NewIni(name string, in io.Reader) (*IniRealm, error) {
 	realm := IniRealm{ SimpleAccountRealm{name: name} }
 	realm.users = make(map[string]authc.SimpleAccount)
 	realm.roles = make(map[string]authz.SimpleRole)
 	realm.credentialsMatcher = &credential.PlainText{}
-	
+
 	ini, err := ini.Load(in)
 
 	if err != nil {
