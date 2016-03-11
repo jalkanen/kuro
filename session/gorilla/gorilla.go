@@ -10,6 +10,10 @@ import (
 	"net/http"
 )
 
+const (
+	SessionCookie = "SESSIONID"
+)
+
 type Session struct {
 	gsession *sessions.Session
 	request  *http.Request
@@ -48,6 +52,15 @@ func (g *Session) Save() {
 	}
 }
 
+// Gorilla Sessions are HTTP Aware
+func (g *Session) Request() *http.Request {
+	return g.request
+}
+
+func (g *Session) Response() http.ResponseWriter {
+	return g.response
+}
+
 /// Gorilla Session Manager
 type SessionManager struct {
 	store sessions.Store
@@ -60,7 +73,10 @@ func NewGorillaManager(store sessions.Store) *SessionManager {
 }
 
 func (g *SessionManager) Start(ctx *session.SessionContext) session.Session {
-	s, _ := g.store.Get(ctx.Request, "SESSIONID")
+	s, _ := g.store.Get(ctx.Request, SessionCookie)
+
+	s.Options.MaxAge = int(ctx.Expiry.Seconds())
+	s.Options.HttpOnly = true
 
 	return &Session{
 		gsession: s,
@@ -73,7 +89,7 @@ func (g *SessionManager) Get(key session.Key) session.Session {
 
 	k, _ := key.(session.WebKey)
 
-	s, _ := g.store.Get(k.Request, "SESSIONID")
+	s, _ := g.store.Get(k.Request, SessionCookie)
 
 	return &Session{
 		gsession: s,
@@ -83,4 +99,16 @@ func (g *SessionManager) Get(key session.Key) session.Session {
 }
 
 func (g *SessionManager) Invalidate(key session.Key) {
+	k, ok := key.(session.WebKey)
+
+	if ok {
+		s, _ := g.store.Get(k.Request, SessionCookie)
+
+		if s != nil {
+			s.Options.MaxAge = -1
+			s.Values = make(map[interface{}]interface{})
+
+			g.store.Save(k.Request, k.Response, s)
+		}
+	}
 }

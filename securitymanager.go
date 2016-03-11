@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/jalkanen/kuro/authc"
 	"github.com/jalkanen/kuro/authz"
+	"github.com/jalkanen/kuro/http"
 	"github.com/jalkanen/kuro/realm"
 	"github.com/jalkanen/kuro/session"
 	"log"
@@ -26,7 +27,7 @@ var (
 
 func init() {
 	Manager = new(DefaultSecurityManager)
-	Manager.sessionManager = session.NewMemory(30*time.Minute)
+	Manager.sessionManager = session.NewMemory(30 * time.Minute)
 }
 
 func logf(format string, vars ...interface{}) {
@@ -172,7 +173,11 @@ func (sm *DefaultSecurityManager) Logout(subject Subject) error {
 	logf("Logging out user '%s' (for Subject %v)", d.principals, d)
 
 	if sm.sessionManager != nil && d.session != nil {
-		sm.sessionManager.Invalidate(session.NewKey(d.session.Id()))
+		if ha, ok := d.session.(http.HTTPAware); ok {
+			sm.sessionManager.Invalidate(session.NewWebKey(d.session.Id(), ha.Request(), ha.Response()))
+		} else {
+			sm.sessionManager.Invalidate(session.NewKey(d.session.Id()))
+		}
 	}
 
 	// Mark user logged out and clear the principals

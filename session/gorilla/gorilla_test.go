@@ -31,4 +31,21 @@ func TestSession(t *testing.T) {
 	cookie := w.Header().Get("Set-Cookie")
 	assert.NotNil(t, cookie)
 	assert.True(t, strings.HasPrefix(cookie, "SESSIONID="))
+
+	logout := func(w http.ResponseWriter, r *http.Request) {
+		subject := kuro.Get(r, w)
+
+		subject.Logout()
+	}
+
+	req, _ = http.NewRequest("GET", "http://example.com/foo", nil)
+
+	w = httptest.NewRecorder()
+	logout(w, req)
+
+	assert.Equal(t, 200, w.Code)
+
+	cookie = w.Header().Get("Set-Cookie")
+	assert.NotNil(t, cookie)
+	assert.True(t, strings.HasPrefix(cookie, "SESSIONID=;")) // Check for empty value
 }
