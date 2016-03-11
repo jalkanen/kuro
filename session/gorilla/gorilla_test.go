@@ -47,5 +47,5 @@ func TestSession(t *testing.T) {
 
 	cookie = w.Header().Get("Set-Cookie")
 	assert.NotNil(t, cookie)
-	assert.True(t, strings.HasPrefix(cookie, "SESSIONID=;")) // Check for empty value
+	assert.True(t, strings.Contains(cookie, "Max-Age=0"), "Got cookie '%s'", cookie)
 }
