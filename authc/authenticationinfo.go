@@ -2,7 +2,6 @@ package authc
 
 import (
 	"github.com/jalkanen/kuro/authz"
-	"fmt"
 )
 
 type AuthenticationInfo interface {
@@ -59,7 +58,7 @@ func (a *SimpleAccount) CredentialsSalt() []byte {
 	return a.credentialsSalt
 }
 
-func NewAccount(principal fmt.Stringer, credentials interface{}, realm string) *SimpleAccount {
+func NewAccount(principal interface{}, credentials interface{}, realm string) *SimpleAccount {
 	s := SimpleAccount{}
 
 	s.principals = make([]interface{},1)
