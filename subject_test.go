@@ -78,6 +78,26 @@ func TestCreate(t *testing.T) {
 	assert.False(t, subject.IsPermitted("read:foo"), "Did get read permission" )
 
 }
+
+func TestCreateReady(t *testing.T) {
+	var principals []interface{}
+	principals = append(principals,"hello")
+
+	subject, _ := sm.CreateSubject( &SubjectContext{
+		Authenticated: true,
+		Principals: principals,
+	} )
+
+	assert.True(t,subject.IsAuthenticated())
+	// TODO: This isn't particularly pretty, but we know it's a string...
+	assert.Equal(t, "hello", fmt.Sprintf("%s",subject.Principal()), "Incorrect name for user" )
+
+	// After logout, should no longer have any permissions
+	subject.Logout()
+
+	assert.False(t,subject.IsAuthenticated())
+}
+
 /*
 func TestGetSubject(t *testing.T) {
 	r, _ := realm.NewIni("ini", strings.NewReader(ini))

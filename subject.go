@@ -34,7 +34,8 @@ type Delegator struct {
 func newSubject(securityManager SecurityManager, ctx SubjectContext) *Delegator {
 	d := Delegator{
 		mgr: securityManager,
-		principals: make([]interface{}, 0, 16),
+		authenticated: ctx.Authenticated,
+		principals: ctx.Principals,
 	}
 
 	return &d

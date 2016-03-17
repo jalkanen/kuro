@@ -9,6 +9,8 @@ type SubjectContext struct {
 	CreateSessions bool
 	Request        *http.Request
 	ResponseWriter http.ResponseWriter
+	Authenticated  bool
+	Principals     []interface{}
 }
 
 func NewSessionContext(ctx SubjectContext) session.SessionContext {
