@@ -34,14 +34,11 @@ func (g *Session) Get(key interface{}) interface{} {
 }
 
 func (g *Session) Set(key interface{}, val interface{}) {
-	fmt.Printf("Gorilla: set %s to %s\n", key, val)
 	g.gsession.Values[key] = val
 	g.dirty = true
 }
 
 func (g *Session) Save() {
-
-	fmt.Printf("Gorilla: Saving session\n")
 
 	if g.dirty {
 		err := g.gsession.Save(g.request, g.response)
@@ -79,8 +76,6 @@ func (g *SessionManager) Start(ctx *session.SessionContext) session.Session {
 	s.Options.MaxAge = int(ctx.Expiry.Seconds())
 	s.Options.HttpOnly = true
 
-	fmt.Printf("Gorilla: Started new session\n")
-
 	session := &Session{
 		gsession: s,
 		request: ctx.Request,
@@ -97,8 +92,6 @@ func (g *SessionManager) Get(key session.Key) session.Session {
 
 	s, _ := g.store.Get(k.Request, SessionCookie)
 
-	fmt.Printf("Gorilla: Fetched session: %s\n", s)
-
 	return &Session{
 		gsession: s,
 		request: k.Request,
@@ -109,8 +102,6 @@ func (g *SessionManager) Get(key session.Key) session.Session {
 
 func (g *SessionManager) Invalidate(key session.Key) {
 	k, ok := key.(session.WebKey)
-
-	fmt.Printf("Gorilla: Invalidated session")
 
 	if ok {
 		s, _ := g.store.Get(k.Request, SessionCookie)
