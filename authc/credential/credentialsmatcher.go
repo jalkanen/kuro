@@ -9,6 +9,8 @@ import (
 	"bytes"
 )
 
+// CredentialsMatcher provides matching services during the actual authentication
+// of the user.
 type CredentialsMatcher interface {
 	Match(authc.AuthenticationToken, authc.AuthenticationInfo) bool
 }
@@ -22,6 +24,9 @@ type Hashed struct {
 	hashIterations int32
 }
 
+// Return a new Hashed credentialsmatcher for the given algorithm and iterations.
+// Salt is provided by the individual AuthenticationInfo if it implements SaltedAuthenticationInfo.
+// Available algorithms are: sha1, sha256, sha384, sha512.
 func NewHashed(algorithm string, iterations int32) *Hashed {
 	m := new(Hashed)
 
@@ -73,6 +78,11 @@ func max(x, y int32) int32 {
 	return y
 }
 
+// Returns a plain text matcher.  Note that using this is inherently unsafe, as it means
+// that your system has passwords stored in plaintext.
+func NewPlain() *PlainText {
+	return &PlainText{}
+}
 
 func (cm *PlainText) Match(token authc.AuthenticationToken, info authc.AuthenticationInfo) bool {
 	var givenPwd []byte

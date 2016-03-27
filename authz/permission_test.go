@@ -55,6 +55,8 @@ func TestWildcardPermissionImplies(t *testing.T) {
 	p1, _ := NewWildcardPermission("bar")
 	p2all, _ := NewWildcardPermission("bar:*")
 	p2, _ := NewWildcardPermission("bar:2")
+	p3, _ := NewWildcardPermission("bar:foo:qweo:12,39,29")
+
 	ap := new(AllPermission)
 
 	assert.False(t, pall.Implies(ap))
@@ -68,6 +70,8 @@ func TestWildcardPermissionImplies(t *testing.T) {
 	assert.False(t, p2.Implies(p1))
 
 	assert.True(t, p1.Implies(p2))
+
+	assert.True(t, pall.Implies(p3))
 }
 
 func TestWildcardPermissionImplies2(t *testing.T) {
