@@ -40,10 +40,6 @@ func (a *SimpleAccount) Roles() []string {
 	return roles
 }
 
-func (a *SimpleAccount) HasRole(role string) bool {
-	return a.roles[role]
-}
-
 // Implements AuthenticationInfo.Credentials()
 func (a *SimpleAccount) Credentials() interface{} {
 	return a.credentials
@@ -89,4 +85,34 @@ func (a *SimpleAccount) AddPermission(permission string) error {
 	}
 
 	return err
+}
+
+//
+//  Authorizer interface
+//
+
+// See if the permissions given to this particular item do imply the
+// given permission
+func (a *SimpleAccount) IsPermittedP(permission authz.Permission) bool {
+	for _, p := range a.permissions {
+		if p.Implies(permission) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (a *SimpleAccount) IsPermitted(permission string) bool {
+	wp, err := authz.NewWildcardPermission(permission)
+
+	if err != nil {
+		return false
+	}
+
+	return a.IsPermittedP(wp)
+}
+
+func (a *SimpleAccount) HasRole(role string) bool {
+	return a.roles[role]
 }

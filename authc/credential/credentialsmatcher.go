@@ -15,9 +15,11 @@ type CredentialsMatcher interface {
 	Match(authc.AuthenticationToken, authc.AuthenticationInfo) bool
 }
 
+// A CredentialsMatcher for plaintext passwords.
 type PlainText struct {
 }
 
+// A CredentialsMatcher for hashed passwords.
 type Hashed struct {
 	hasher         hash.Hash
 	hashAlgorithm  string
