@@ -21,8 +21,22 @@ func TestPermissions(t *testing.T) {
 	p1, _ := NewWildcardPermission("brb")
 	p2, _ := NewWildcardPermission("foo:3")
 
-	a.AddPermission(p1)
-	a.AddPermission(p2)
+	a.AddPermissionP(p1)
+	a.AddPermissionP(p2)
+
+	assert.Contains(t, a.Permissions(), p1)
+	assert.Contains(t, a.Permissions(), p2)
+
+	assert.Equal(t, 2, len(a.Permissions()), "Got wrong number of permissions for %v", a.Permissions())
+}
+
+func TestStringPermissions(t *testing.T) {
+	var a = SimpleAuthorizationInfo{}
+	p1, _ := NewWildcardPermission("brb")
+	p2, _ := NewWildcardPermission("foo:3")
+
+	a.AddPermission("brb")
+	a.AddPermission("foo:3")
 
 	assert.Contains(t, a.Permissions(), p1)
 	assert.Contains(t, a.Permissions(), p2)

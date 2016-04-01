@@ -36,9 +36,21 @@ func (a *SimpleAuthorizationInfo) AddRole(role string) {
 	a.roles[role] = true
 }
 
-func (a *SimpleAuthorizationInfo) AddPermission(p Permission) {
+func (a *SimpleAuthorizationInfo) AddPermissionP(p Permission) {
 	if a.permissions == nil {
 		a.permissions = make([]Permission, 0, 128) // TODO: Perhaps this is still better as a map rather than a slice of fixed cap?
 	}
 	a.permissions = append(a.permissions, p)
+}
+
+func (a *SimpleAuthorizationInfo) AddPermission(p string) error {
+	wp, err := NewWildcardPermission(p)
+
+	if err != nil {
+		return err
+	}
+
+	a.AddPermissionP(wp)
+
+	return nil
 }
