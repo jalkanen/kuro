@@ -45,9 +45,10 @@ func (r *CachingRealm) AuthenticationInfo(token authc.AuthenticationToken) (auth
 	var err error
 
 	if ok {
-		info = r.cache.Get(cachekey).(authc.AuthenticationInfo)
+		i := r.cache.Get(cachekey)
 
-		if info != nil {
+		if( i != nil ) {
+			info = i.(authc.AuthenticationInfo)
 			return info, nil
 		}
 	}
@@ -75,3 +76,11 @@ func (r *CachingRealm) CredentialsMatcher() credential.CredentialsMatcher {
 	return r.realm.CredentialsMatcher()
 }
 
+/*
+	Clears the contents of the cache for this set of principals.
+ */
+func (r *CachingRealm) ClearCache(principals []interface{}) {
+	for _,p := range principals {
+		r.cache.Del(p.(string))
+	}
+}
