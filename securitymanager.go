@@ -113,22 +113,50 @@ func (sm *DefaultSecurityManager) CreateSubject(ctx *SubjectContext) (Subject, e
 func (sm *DefaultSecurityManager) HasRole(principals []interface{}, role string) bool {
 
 	for _, re := range sm.realms {
-		r, ok := re.(realm.AuthorizingRealm)
+		r, ok := re.(authz.Authorizer)
 
 		if ok && r.HasRole(principals, role) {
 			return true
+		}
+
+		if rr, ok := re.(realm.AuthorizingRealm); ok {
+			info, _ := rr.AuthorizationInfo(principals)
+
+			if info != nil {
+				return containsString(info.Roles(), role)
+			}
 		}
 	}
 
 	return false
 }
 
+// Returns true, if the slice contains the given value.
+func containsString(slice []string, val string) bool {
+	for _, k := range slice {
+		if k == val {
+			return true
+		}
+	}
+	return false
+}
+
 func (sm *DefaultSecurityManager) IsPermittedP(principals []interface{}, permission authz.Permission) bool {
 	for _, re := range sm.realms {
-		r, ok := re.(realm.AuthorizingRealm)
+		if r, ok := re.(authz.Authorizer); ok {
+			return r.IsPermittedP(principals,permission)
+		}
 
-		if ok && r.IsPermittedP(principals, permission) {
-			return true
+		if r, ok := re.(realm.AuthorizingRealm); ok {
+			info, _ := r.AuthorizationInfo(principals)
+
+			if info != nil {
+				for _, p := range info.Permissions() {
+					if p.Implies(permission) {
+						return true
+					}
+				}
+			}
 		}
 	}
 
@@ -137,10 +165,21 @@ func (sm *DefaultSecurityManager) IsPermittedP(principals []interface{}, permiss
 
 func (sm *DefaultSecurityManager) IsPermitted(principals []interface{}, permission string) bool {
 	for _, re := range sm.realms {
-		r, ok := re.(realm.AuthorizingRealm)
+		if r, ok := re.(authz.Authorizer); ok {
+			return r.IsPermitted(principals,permission)
+		}
 
-		if ok && r.IsPermitted(principals, permission) {
-			return true
+		if r, ok := re.(realm.AuthorizingRealm); ok {
+			info, _ := r.AuthorizationInfo(principals)
+
+			if info != nil {
+				compiledperm, _ := authz.NewWildcardPermission(permission)
+				for _, p := range info.Permissions() {
+					if p.Implies(compiledperm) {
+						return true
+					}
+				}
+			}
 		}
 	}
 

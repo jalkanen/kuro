@@ -40,6 +40,19 @@ func (a *SimpleAccount) Roles() []string {
 	return roles
 }
 
+// TODO: This isn't very fast honestly
+func (a *SimpleAccount) Permissions() []authz.Permission {
+	permissions := make([]authz.Permission, len(a.permissions))
+
+	i := 0
+	for _,p := range a.permissions {
+		permissions[i] = p
+		i++
+	}
+
+	return permissions
+}
+
 // Implements AuthenticationInfo.Credentials()
 func (a *SimpleAccount) Credentials() interface{} {
 	return a.credentials

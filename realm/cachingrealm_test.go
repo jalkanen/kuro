@@ -63,6 +63,10 @@ func (r *MockRealm) CredentialsMatcher() credential.CredentialsMatcher {
 	return credential.NewPlain()
 }
 
+func (r *MockRealm) AuthorizationInfo(p []interface{}) (authz.AuthorizationInfo, error) {
+	return authc.NewAccount(p[0], "", r.Name()),nil
+}
+
 // Authorizer interface
 
 func (r *MockRealm) HasRole(principals []interface{}, role string) bool {

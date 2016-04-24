@@ -5,6 +5,7 @@ import (
 	"github.com/jalkanen/kuro/authc"
 	"github.com/jalkanen/kuro/authc/credential"
 	"time"
+	"github.com/jalkanen/kuro/authz"
 )
 
 /*
@@ -74,6 +75,11 @@ func (r *CachingRealm) Supports(token authc.AuthenticationToken) bool {
 
 func (r *CachingRealm) CredentialsMatcher() credential.CredentialsMatcher {
 	return r.realm.CredentialsMatcher()
+}
+
+// FIXME: Isn't actually caching anything right now.
+func (r *CachingRealm) AuthorizationInfo(principals []interface{}) (authz.AuthorizationInfo, error) {
+	return r.realm.AuthorizationInfo(principals)
 }
 
 /*

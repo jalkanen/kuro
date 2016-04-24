@@ -25,10 +25,11 @@ type AuthenticatingRealm interface {
 	CredentialsMatcher() credential.CredentialsMatcher
 }
 
-// An AuthorizingRealm provides authorization capabilities by adding a Authorizer.
+// An AuthorizingRealm provides authorization capabilities.  The Realm should provide a way
+// to get the AuthorizationInfo.
 type AuthorizingRealm interface {
 	AuthenticatingRealm
-	authz.Authorizer
+	AuthorizationInfo(principals []interface{}) (authz.AuthorizationInfo,error)
 }
 
 // A simple in-memory realm. Highly performant, but does not reload its contents, so
@@ -133,6 +134,16 @@ func (r *SimpleAccountRealm) AuthenticationInfo(token authc.AuthenticationToken)
 
 func (r *SimpleAccountRealm) CredentialsMatcher() credential.CredentialsMatcher {
 	return r.credentialsMatcher
+}
+
+// AuthorizingRealm interface
+
+func (r *SimpleAccountRealm) AuthorizationInfo(principals []interface{}) (authz.AuthorizationInfo, error) {
+	if acct, ok := r.users[principals[0].(stringer).String()]; ok {
+		return &acct, nil
+	}
+
+	return nil,nil
 }
 
 // Authorizer interface
