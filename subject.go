@@ -51,7 +51,7 @@ var subjects map[interface{}]Subject = make(map[interface{}]Subject, 64)
 // This only works with the global SecurityManager
 func Get(r *http.Request, w http.ResponseWriter) Subject {
 	lock.Lock()
-	lock.Unlock()
+	defer lock.Unlock()
 
 	subject := subjects[r]
 
