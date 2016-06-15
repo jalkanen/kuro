@@ -8,11 +8,16 @@ import (
 	"github.com/jalkanen/kuro/session"
 	"net/http"
 	"sync"
+	"encoding/gob"
 )
 
 const (
 	SubjectKey = "__kuro_subject"
 )
+
+func init() {
+	gob.Register(principalstack{})
+}
 
 type Subject interface {
 	Principal() interface{}
