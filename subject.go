@@ -34,6 +34,7 @@ type Delegator struct {
 	mgr           SecurityManager
 	authenticated bool
 	session       session.Session
+	createSessions bool
 }
 
 const (
@@ -47,6 +48,7 @@ func newSubject(securityManager SecurityManager, ctx SubjectContext) *Delegator 
 		mgr:           securityManager,
 		authenticated: ctx.Authenticated,
 		principals:    ctx.Principals,
+		createSessions: ctx.CreateSessions,
 	}
 
 	return &d
@@ -133,7 +135,7 @@ func (s *Delegator) Principals() []interface{} {
 }
 
 func (s *Delegator) Session() session.Session {
-	if s.session == nil {
+	if s.session == nil && s.createSessions {
 		s.session = s.mgr.SessionManager().Start(&session.SessionContext{})
 	}
 

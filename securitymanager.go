@@ -27,7 +27,7 @@ var (
 
 func init() {
 	Manager = new(DefaultSecurityManager)
-	Manager.sessionManager = session.NewMemory(30 * time.Minute)
+	Manager.SetSessionManager(session.NewMemory(30 * time.Minute))
 }
 
 func logf(format string, vars ...interface{}) {
