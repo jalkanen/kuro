@@ -142,6 +142,10 @@ func containsString(slice []string, val string) bool {
 }
 
 func (sm *DefaultSecurityManager) IsPermittedP(principals []interface{}, permission authz.Permission) bool {
+	if len(principals) == 0 {
+		return false
+	}
+
 	for _, re := range sm.realms {
 		if r, ok := re.(authz.Authorizer); ok {
 			return r.IsPermittedP(principals,permission)
@@ -164,6 +168,10 @@ func (sm *DefaultSecurityManager) IsPermittedP(principals []interface{}, permiss
 }
 
 func (sm *DefaultSecurityManager) IsPermitted(principals []interface{}, permission string) bool {
+	if len(principals) == 0 {
+		return false
+	}
+
 	for _, re := range sm.realms {
 		if r, ok := re.(authz.Authorizer); ok {
 			return r.IsPermitted(principals,permission)

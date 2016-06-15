@@ -42,6 +42,7 @@ type Session interface {
 	IsValid() bool
 	Get(interface{}) interface{}
 	Set(interface{}, interface{})
+	Del(interface{})
 	Save()
 }
 
@@ -84,6 +85,13 @@ func (s *DefaultSession) Set(key interface{}, value interface{}) {
 	defer s.lock.Unlock()
 
 	s.attributes[key] = value
+}
+
+func (s *DefaultSession) Del(key interface{}) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	delete(s.attributes,key)
 }
 
 func (s *DefaultSession) Save() {

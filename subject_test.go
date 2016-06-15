@@ -7,6 +7,8 @@ import (
 	"github.com/jalkanen/kuro/realm"
 	"strings"
 	"fmt"
+	"github.com/jalkanen/kuro/session"
+	"time"
 )
 
 var ini string = `
@@ -26,6 +28,8 @@ func init() {
 	sm = new(DefaultSecurityManager)
 	r, _ := realm.NewIni("ini", strings.NewReader(ini))
 	sm.SetRealm(r)
+	sm.SetSessionManager(session.NewMemory(30*time.Second))
+
 	Verbose = true
 }
 
@@ -96,6 +100,33 @@ func TestCreateReady(t *testing.T) {
 	subject.Logout()
 
 	assert.False(t,subject.IsAuthenticated())
+}
+
+func TestRunAs(t *testing.T) {
+	subject, _ := sm.CreateSubject( &SubjectContext{} )
+
+	subject.Login( authc.NewToken("foo", "password") )
+
+	assert.True(t,subject.IsAuthenticated(), "User is not authenticated after successful login")
+	assert.Equal(t, "foo", fmt.Sprintf("%s", subject.Principal()))
+
+	assert.False(t, subject.IsPermitted("everything"))
+
+	err := subject.RunAs([]interface{} { "bar" })
+
+	assert.Nil(t, err)
+	assert.True(t,subject.IsAuthenticated(), "User is not authenticated after successful runas")
+	assert.Equal(t, "bar", fmt.Sprintf("%s", subject.Principal()))
+
+	assert.True(t, subject.IsPermitted("everything"))
+
+	subject.ReleaseRunAs()
+
+	assert.True(t,subject.IsAuthenticated(), "User is not authenticated after successful runas")
+	assert.Equal(t, "foo", fmt.Sprintf("%s", subject.Principal()))
+
+	assert.False(t, subject.IsPermitted("everything"))
+
 }
 
 /*

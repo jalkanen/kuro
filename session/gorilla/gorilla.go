@@ -33,6 +33,11 @@ func (g *Session) Get(key interface{}) interface{} {
 	return g.gsession.Values[key]
 }
 
+func (g *Session) Del(key interface{}) {
+	delete(g.gsession.Values, key)
+	g.dirty = true
+}
+
 func (g *Session) Set(key interface{}, val interface{}) {
 	g.gsession.Values[key] = val
 	g.dirty = true
@@ -47,6 +52,8 @@ func (g *Session) Save() {
 		if err != nil {
 			fmt.Println("Cannot store to session: %v", err)
 		}
+
+		fmt.Printf("Saved cookie: %+v\n", g.gsession)
 	}
 }
 
@@ -111,6 +118,7 @@ func (g *SessionManager) Invalidate(key session.Key) {
 			s.Values = make(map[interface{}]interface{})
 
 			g.store.Save(k.Request, k.Response, s)
+			fmt.Printf("Invalidated cookie: %+v\n", s.Options)
 		}
 	}
 }

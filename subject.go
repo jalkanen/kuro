@@ -1,12 +1,13 @@
 package kuro
 
 import (
+	"errors"
+	"fmt"
 	"github.com/jalkanen/kuro/authc"
 	"github.com/jalkanen/kuro/authz"
 	"github.com/jalkanen/kuro/session"
-	"sync"
-	"fmt"
 	"net/http"
+	"sync"
 )
 
 const (
@@ -22,6 +23,10 @@ type Subject interface {
 	IsPermittedP(permission authz.Permission) bool
 	Login(authc.AuthenticationToken) error
 	Logout()
+	RunAs([]interface{}) error
+	ReleaseRunAs() ([]interface{}, error)
+	PreviousPrincipals() []interface{}
+	IsRemembered() bool
 }
 
 type Delegator struct {
@@ -31,11 +36,17 @@ type Delegator struct {
 	session       session.Session
 }
 
+const (
+	sessionPrincipalsKey    = "__principals"
+	sessionAuthenticatedKey = "__authenticated"
+	sessionRunAsKey         = "__principalstack"
+)
+
 func newSubject(securityManager SecurityManager, ctx SubjectContext) *Delegator {
 	d := Delegator{
-		mgr: securityManager,
+		mgr:           securityManager,
 		authenticated: ctx.Authenticated,
-		principals: ctx.Principals,
+		principals:    ctx.Principals,
 	}
 
 	return &d
@@ -59,7 +70,7 @@ func Get(r *http.Request, w http.ResponseWriter) Subject {
 
 		sc := SubjectContext{
 			CreateSessions: true,
-			Request: r,
+			Request:        r,
 			ResponseWriter: w,
 		}
 		subject, _ = Manager.CreateSubject(&sc)
@@ -90,16 +101,35 @@ func With(where *http.Request, s Subject) {
 func Finish(where *http.Request) {
 	lock.Lock()
 	defer lock.Unlock()
-	delete(subjects,where)
+	delete(subjects, where)
 }
 
 // TODO: Should return something else in error?
 func (s *Delegator) Principal() interface{} {
+	p := s.Principals()
+	if p == nil {
+		return nil
+	}
+
+	return p[0]
+}
+
+func (s *Delegator) Principals() []interface{} {
 	if !s.hasPrincipals() {
 		return nil
 	}
 
-	return s.principals[0]
+	ps, err := s.getPrincipalStack()
+
+	if err == nil {
+		p, _ := ps.Peek()
+
+		if p != nil {
+			return p
+		}
+	}
+
+	return s.principals
 }
 
 func (s *Delegator) Session() session.Session {
@@ -118,13 +148,17 @@ func (s *Delegator) IsAuthenticated() bool {
 	return s.authenticated
 }
 
+func (s *Delegator) IsRemembered() bool {
+	return len(s.principals) > 0 && !s.authenticated
+}
+
 // Swallows the error in case for simplicity
 func (s *Delegator) IsPermitted(permission string) bool {
-	return s.hasPrincipals() && s.mgr.IsPermitted(s.principals, permission)
+	return s.hasPrincipals() && s.mgr.IsPermitted(s.Principals(), permission)
 }
 
 func (s *Delegator) IsPermittedP(permission authz.Permission) bool {
-	return s.hasPrincipals() && s.mgr.IsPermittedP(s.principals, permission)
+	return s.hasPrincipals() && s.mgr.IsPermittedP(s.Principals(), permission)
 }
 
 func (s *Delegator) hasPrincipals() bool {
@@ -132,10 +166,12 @@ func (s *Delegator) hasPrincipals() bool {
 }
 
 func (s *Delegator) Login(token authc.AuthenticationToken) error {
+	s.clearPrincipalStack()
 	return s.mgr.Login(s, token)
 }
 
 func (s *Delegator) Logout() {
+	s.clearPrincipalStack()
 	s.mgr.Logout(s)
 }
 
@@ -150,8 +186,8 @@ func (s *Delegator) String() string {
 func (s *Delegator) store() {
 	session := s.Session()
 
-	session.Set("__principals", s.principals)
-	session.Set("__authenticated", s.authenticated)
+	session.Set(sessionPrincipalsKey, s.principals)
+	session.Set(sessionAuthenticatedKey, s.authenticated)
 
 	session.Save()
 }
@@ -160,14 +196,160 @@ func (s *Delegator) load() *Delegator {
 	session := s.Session()
 
 	if session != nil {
-		if p := session.Get("__principals"); p != nil {
+		if p := session.Get(sessionPrincipalsKey); p != nil {
 			s.principals = p.([]interface{})
 		}
 
-		if a := session.Get("__authenticated"); a != nil {
+		if a := session.Get(sessionAuthenticatedKey); a != nil {
 			s.authenticated = a.(bool)
 		}
 	}
 
 	return s
+}
+
+func (s *Delegator) RunAs(newprincipals []interface{}) error {
+	if !s.hasPrincipals() {
+		return errors.New("The Subject does not have any principals yet, so it cannot impersonate another principal.")
+	}
+
+	if len(newprincipals) == 0 {
+		return errors.New("Must have at least one principal to impersonate.")
+	}
+
+	ps, err := s.getPrincipalStack()
+
+	if err != nil {
+		return err
+	}
+
+	ps.Push(newprincipals)
+
+	s.storePrincipalStack(ps)
+	s.Session().Save()
+
+	return nil
+}
+
+func (s *Delegator) ReleaseRunAs() ([]interface{}, error) {
+	if !s.hasPrincipals() {
+		return nil, errors.New("The Subject does not have any principals yet, so it cannot impersonate another principal.")
+	}
+
+	ps, err := s.getPrincipalStack()
+
+	if err != nil {
+		return nil, err
+	}
+
+	principals, err := ps.Pop()
+
+	if ps.IsEmpty() {
+		s.clearPrincipalStack()
+	} else {
+		s.storePrincipalStack(ps)
+	}
+
+	s.Session().Save()
+
+	return principals, nil
+}
+
+func (s *Delegator) PreviousPrincipals() []interface{} {
+	ps, err := s.getPrincipalStack()
+
+	if err == nil {
+		p, _ := ps.Peek()
+		return p
+	}
+	return nil
+}
+
+func (s *Delegator) clearPrincipalStack() {
+	if session := s.Session(); session != nil {
+		session.Del(sessionRunAsKey)
+	}
+}
+
+func (s *Delegator) getPrincipalStack() (*principalstack, error) {
+	session := s.Session()
+
+	if session != nil {
+		var p *principalstack
+		ps := session.Get(sessionRunAsKey)
+
+		if ps == nil {
+			p = &principalstack{}
+		} else {
+			p = ps.(*principalstack)
+		}
+
+		return p, nil
+	}
+
+	return nil, errors.New("No session available")
+}
+
+func (s *Delegator) storePrincipalStack(ps *principalstack) error {
+
+	if ps.IsEmpty() {
+		return errors.New("Principal stack must contain at least one principal.")
+	}
+
+	if session := s.Session(); session != nil {
+		session.Set(sessionRunAsKey, ps)
+		return nil
+	}
+
+	return errors.New("No session available")
+}
+
+/****************************************************************/
+
+type principalstack struct {
+	s    [][]interface{}
+	lock sync.Mutex
+}
+
+func (s *principalstack) Push(principals []interface{}) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.s = append(s.s, principals)
+}
+
+func (s *principalstack) IsEmpty() bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	return len(s.s) == 0
+}
+
+func (s *principalstack) Pop() ([]interface{}, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	l := len(s.s)
+	if l == 0 {
+		return nil, errors.New("Empty stack")
+	}
+
+	res := s.s[l-1]
+	s.s = s.s[:l-1]
+
+	return res, nil
+}
+
+func (s *principalstack) Peek() ([]interface{}, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	l := len(s.s)
+	if l == 0 {
+		return nil, errors.New("Empty stack")
+	}
+
+	res := s.s[l-1]
+
+	return res, nil
 }

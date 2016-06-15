@@ -139,7 +139,7 @@ func (r *SimpleAccountRealm) CredentialsMatcher() credential.CredentialsMatcher 
 // AuthorizingRealm interface
 
 func (r *SimpleAccountRealm) AuthorizationInfo(principals []interface{}) (authz.AuthorizationInfo, error) {
-	if acct, ok := r.users[principals[0].(stringer).String()]; ok {
+	if acct, ok := r.users[fmt.Sprint(principals[0])]; ok {
 		return &acct, nil
 	}
 
@@ -153,13 +153,13 @@ func (r *SimpleAccountRealm) HasRole(principals []interface{}, role string) bool
 		return false
 	}
 
-	acct, ok := r.users[principals[0].(stringer).String()]
+	acct, ok := r.users[fmt.Sprint(principals[0])]
 
 	return ok && acct.HasRole(role)
 }
 
 func (r *SimpleAccountRealm) IsPermittedP(principals []interface{}, permission authz.Permission) bool {
-	acct, ok := r.users[principals[0].(stringer).String()]
+	acct, ok := r.users[fmt.Sprint(principals[0])]
 
 	if ok {
 		for _,role := range acct.Roles() {

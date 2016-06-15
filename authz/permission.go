@@ -17,15 +17,23 @@ const (
 	WildcardToken        = "*"
 )
 
-/*
- */
+
+//  A Permission represents a permission granted to a principal.
+//  The Implies() method checks if this permission implies the given permission, in other
+//  words - is the owner of this permission allowed to perform an action described by the
+//  other permission.
+//
+//  A Permission must implement String() as per the fmt.Stringer.
+//
+//  Permissions are immutable, reusable and thread-safe.
 type Permission interface {
 	Implies(permission Permission) bool
 	fmt.Stringer // One must implement "String()"
 }
 
 /*
-	AllPermission always returns true on the implies().
+	AllPermission always returns true on Implies(), and therefore is usable really only
+	for system or admin users.  Because this permission really allows you to do everything.
 */
 type AllPermission struct {
 }
@@ -38,10 +46,33 @@ func (p AllPermission) String() string {
 	return "*"
 }
 
+/*
+	A WildcardPermission provides a simple structure for permissions.  Each
+	permission has multiple colon-separated parts, some of which can be wildcards (*).
+
+	For example, a permission can be a simple string "write" for really simple cases.
+	However, a more complicated permission might be "printers:write", or even "printers:hp:print",
+	consisting of three parts.  You could also separate multiple permissions, e.g.
+	"printers:hp:print,manage".
+
+	For example, you could grant an user a permission "printers:*:print", which would then mean
+	that the user would be allowed to print on any printer, regardless of the manufacturer. The printer
+	code would check if the user is allowed to do "printers:hp:print" before proceeding, and the
+	wildcard would match.  However, if the user attempted to perform management for the printer,
+	the permission "printers:hp:manage" wouldn't be allowed under the "printers:*:print" -permission
+	granted previously to the user.
+
+	The permissions must not contain whitespaces.
+ */
 type WildcardPermission struct {
 	parts []map[string]bool
 }
 
+/*
+	Create a new WildcardPermission based on the string representation.  Each permission
+	must be one or more parts, separated by colons, containing subpermissions separated
+	with commas.
+ */
 func NewWildcardPermission(parts string) (*WildcardPermission, error) {
 	p := new(WildcardPermission)
 
@@ -54,6 +85,8 @@ func NewWildcardPermission(parts string) (*WildcardPermission, error) {
 	return p, nil
 }
 
+// Implements the Permission interface.  The incoming permission MUST be
+// another WildcardPermission.
 func (w *WildcardPermission) Implies(permission Permission) bool {
 	otherPermission, ok := permission.(*WildcardPermission)
 	if !ok {
@@ -140,6 +173,8 @@ func (w *WildcardPermission) setParts(partsString string) error {
 	return nil
 }
 
+// Returns a canonical representation of this Permission.  All the subcomponents
+// will be sorted in alphabetical order.
 func (w WildcardPermission) String() string {
 	var buf bytes.Buffer
 
