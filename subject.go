@@ -188,10 +188,12 @@ func (s *Delegator) String() string {
 func (s *Delegator) store() {
 	session := s.Session()
 
-	session.Set(sessionPrincipalsKey, s.principals)
-	session.Set(sessionAuthenticatedKey, s.authenticated)
+	if session != nil {
+		session.Set(sessionPrincipalsKey, s.principals)
+		session.Set(sessionAuthenticatedKey, s.authenticated)
 
-	session.Save()
+		session.Save()
+	}
 }
 
 func (s *Delegator) load() *Delegator {

@@ -34,7 +34,9 @@ func init() {
 }
 
 func TestCreate(t *testing.T) {
-	subject, _ := sm.CreateSubject( &SubjectContext{} )
+	subject, _ := sm.CreateSubject( &SubjectContext{
+		CreateSessions: true,
+	} )
 
 	assert.False(t,subject.IsAuthenticated())
 
@@ -90,6 +92,7 @@ func TestCreateReady(t *testing.T) {
 	subject, _ := sm.CreateSubject( &SubjectContext{
 		Authenticated: true,
 		Principals: principals,
+		CreateSessions: true,
 	} )
 
 	assert.True(t,subject.IsAuthenticated())
@@ -103,7 +106,9 @@ func TestCreateReady(t *testing.T) {
 }
 
 func TestRunAs(t *testing.T) {
-	subject, _ := sm.CreateSubject( &SubjectContext{} )
+	subject, _ := sm.CreateSubject( &SubjectContext{
+		CreateSessions: true,
+	} )
 
 	subject.Login( authc.NewToken("foo", "password") )
 
