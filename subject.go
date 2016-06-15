@@ -16,7 +16,7 @@ const (
 )
 
 func init() {
-	gob.Register(principalstack{})
+	gob.Register(PrincipalStack{})
 }
 
 type Subject interface {
@@ -280,17 +280,17 @@ func (s *Delegator) clearPrincipalStack() {
 	}
 }
 
-func (s *Delegator) getPrincipalStack() (*principalstack, error) {
+func (s *Delegator) getPrincipalStack() (*PrincipalStack, error) {
 	session := s.Session()
 
 	if session != nil {
-		var p *principalstack
+		var p *PrincipalStack
 		ps := session.Get(sessionRunAsKey)
 
 		if ps == nil {
-			p = &principalstack{}
+			p = &PrincipalStack{}
 		} else {
-			p = ps.(*principalstack)
+			p = ps.(*PrincipalStack)
 		}
 
 		return p, nil
@@ -299,7 +299,7 @@ func (s *Delegator) getPrincipalStack() (*principalstack, error) {
 	return nil, errors.New("No session available")
 }
 
-func (s *Delegator) storePrincipalStack(ps *principalstack) error {
+func (s *Delegator) storePrincipalStack(ps *PrincipalStack) error {
 
 	if ps.IsEmpty() {
 		return errors.New("Principal stack must contain at least one principal.")
@@ -315,50 +315,50 @@ func (s *Delegator) storePrincipalStack(ps *principalstack) error {
 
 /****************************************************************/
 
-type principalstack struct {
-	s    [][]interface{}
+type PrincipalStack struct {
+	Stack    [][]interface{}
 	lock sync.Mutex
 }
 
-func (s *principalstack) Push(principals []interface{}) {
+func (s *PrincipalStack) Push(principals []interface{}) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	s.s = append(s.s, principals)
+	s.Stack = append(s.Stack, principals)
 }
 
-func (s *principalstack) IsEmpty() bool {
+func (s *PrincipalStack) IsEmpty() bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	return len(s.s) == 0
+	return len(s.Stack) == 0
 }
 
-func (s *principalstack) Pop() ([]interface{}, error) {
+func (s *PrincipalStack) Pop() ([]interface{}, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	l := len(s.s)
+	l := len(s.Stack)
 	if l == 0 {
 		return nil, errors.New("Empty stack")
 	}
 
-	res := s.s[l-1]
-	s.s = s.s[:l-1]
+	res := s.Stack[l-1]
+	s.Stack = s.Stack[:l-1]
 
 	return res, nil
 }
 
-func (s *principalstack) Peek() ([]interface{}, error) {
+func (s *PrincipalStack) Peek() ([]interface{}, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	l := len(s.s)
+	l := len(s.Stack)
 	if l == 0 {
 		return nil, errors.New("Empty stack")
 	}
 
-	res := s.s[l-1]
+	res := s.Stack[l-1]
 
 	return res, nil
 }
