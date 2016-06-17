@@ -148,7 +148,7 @@ func (s *Delegator) Session() session.Session {
 }
 
 func (s *Delegator) HasRole(role string) bool {
-	return s.hasPrincipals() && s.mgr.HasRole(s.principals, role)
+	return s.hasPrincipals() && s.mgr.HasRole(s.Principals(), role)
 }
 
 func (s *Delegator) IsAuthenticated() bool {
@@ -184,7 +184,7 @@ func (s *Delegator) Logout() {
 
 // Stringer. Outputs a nicer version of the subject's principals and whether it is authenticated or not.
 func (s *Delegator) String() string {
-	return fmt.Sprintf("Subject%s(%t)", s.principals, s.authenticated)
+	return fmt.Sprintf("Subject%s(%t)", s.Principals(), s.authenticated)
 }
 
 // Load and store the Subject into the store itself.  In practice, all
