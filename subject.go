@@ -126,6 +126,7 @@ func (s *Delegator) Principals() []interface{} {
 		return nil
 	}
 
+	// Check for current RunAs state.
 	ps, err := s.getPrincipalStack()
 
 	if err == nil {

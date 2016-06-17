@@ -134,6 +134,29 @@ func TestRunAs(t *testing.T) {
 
 }
 
+func TestString(t *testing.T) {
+	subject, _ := sm.CreateSubject( &SubjectContext{
+		CreateSessions: true,
+	} )
+
+	assert.NotPanics(t, func() { subject.(fmt.Stringer).String() } )
+
+	subject, _ = sm.CreateSubject( &SubjectContext{
+		CreateSessions: true,
+		Principals: []interface{} { "foo" },
+	} )
+
+	assert.NotPanics(t, func() { subject.(fmt.Stringer).String() } )
+
+	subject.RunAs([]interface{} { "bar" } )
+
+	assert.NotPanics(t, func() { subject.(fmt.Stringer).String() } )
+
+	subject.ReleaseRunAs()
+
+	assert.NotPanics(t, func() { subject.(fmt.Stringer).String() } )
+}
+
 /*
 func TestGetSubject(t *testing.T) {
 	r, _ := realm.NewIni("ini", strings.NewReader(ini))
