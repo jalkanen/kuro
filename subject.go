@@ -1,6 +1,7 @@
 package kuro
 
 import (
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"github.com/jalkanen/kuro/authc"
@@ -8,7 +9,6 @@ import (
 	"github.com/jalkanen/kuro/session"
 	"net/http"
 	"sync"
-	"encoding/gob"
 )
 
 const (
@@ -35,11 +35,13 @@ type Subject interface {
 }
 
 type Delegator struct {
-	principals    []interface{}
-	mgr           SecurityManager
-	authenticated bool
-	session       session.Session
+	principals     []interface{}
+	mgr            SecurityManager
+	authenticated  bool
+	session        session.Session
 	createSessions bool
+	request        *http.Request
+	response       http.ResponseWriter
 }
 
 const (
@@ -50,10 +52,12 @@ const (
 
 func newSubject(securityManager SecurityManager, ctx SubjectContext) *Delegator {
 	d := Delegator{
-		mgr:           securityManager,
-		authenticated: ctx.Authenticated,
-		principals:    ctx.Principals,
+		mgr:            securityManager,
+		authenticated:  ctx.Authenticated,
+		principals:     ctx.Principals,
 		createSessions: ctx.CreateSessions,
+		request:        ctx.Request,
+		response:       ctx.ResponseWriter,
 	}
 
 	return &d
@@ -142,7 +146,10 @@ func (s *Delegator) Principals() []interface{} {
 
 func (s *Delegator) Session() session.Session {
 	if s.session == nil && s.createSessions {
-		s.session = s.mgr.SessionManager().Start(&session.SessionContext{})
+		s.session = s.mgr.SessionManager().Start(&session.SessionContext{
+			Request:  s.request,
+			Response: s.response,
+		})
 	}
 
 	return s.session
@@ -317,8 +324,8 @@ func (s *Delegator) storePrincipalStack(ps *PrincipalStack) error {
 /****************************************************************/
 
 type PrincipalStack struct {
-	Stack    [][]interface{}
-	lock sync.Mutex
+	Stack [][]interface{}
+	lock  sync.Mutex
 }
 
 func (s *PrincipalStack) Push(principals []interface{}) {
