@@ -30,6 +30,7 @@ type Subject interface {
 	Logout()
 	RunAs([]interface{}) error
 	ReleaseRunAs() ([]interface{}, error)
+	IsRunAs() bool
 	PreviousPrincipals() []interface{}
 	IsRemembered() bool
 }
@@ -225,6 +226,12 @@ func (s *Delegator) load() *Delegator {
 	return s
 }
 
+func (s *Delegator) IsRunAs() bool {
+	ps, err := s.getPrincipalStack()
+
+	return !(err != nil || ps == nil || ps.IsEmpty())
+}
+
 func (s *Delegator) RunAs(newprincipals []interface{}) error {
 	if !s.hasPrincipals() {
 		return errors.New("The Subject does not have any principals yet, so it cannot impersonate another principal.")
@@ -295,10 +302,15 @@ func (s *Delegator) getPrincipalStack() (*PrincipalStack, error) {
 		var p *PrincipalStack
 		ps := session.Get(sessionRunAsKey)
 
+		// The thing is that we don't know in which format the session is storing
+		// our stuff; this is a known problem with Gorilla.
 		if ps == nil {
 			p = &PrincipalStack{}
-		} else {
+		} else if _, ok := ps.(*PrincipalStack); ok {
 			p = ps.(*PrincipalStack)
+		} else if _, ok := ps.(PrincipalStack); ok {
+			pp := ps.(PrincipalStack)
+			p = &pp
 		}
 
 		return p, nil
@@ -314,7 +326,7 @@ func (s *Delegator) storePrincipalStack(ps *PrincipalStack) error {
 	}
 
 	if session := s.Session(); session != nil {
-		session.Set(sessionRunAsKey, ps)
+		session.Set(sessionRunAsKey, *ps)
 		return nil
 	}
 
