@@ -12,6 +12,10 @@ import (
 	"encoding/gob"
 )
 
+var (
+	ErrUnknownAccount error = errors.New("Unknown account")
+)
+
 // Realms are essentially user, role and permission databases.
 type Realm interface {
 	AuthenticationInfo(authc.AuthenticationToken) (authc.AuthenticationInfo,error)
@@ -25,11 +29,17 @@ type AuthenticatingRealm interface {
 	CredentialsMatcher() credential.CredentialsMatcher
 }
 
+<<<<<<< Updated upstream
 // An AuthorizingRealm provides authorization capabilities.  The Realm should provide a way
 // to get the AuthorizationInfo.
 type AuthorizingRealm interface {
 	AuthenticatingRealm
 	AuthorizationInfo(principals []interface{}) (authz.AuthorizationInfo,error)
+=======
+// An AuthorizingRealm provides authorization capabilities
+type AuthorizingRealm interface {
+	AuthorizationInfo([]interface{}) (authz.AuthorizationInfo,error)
+>>>>>>> Stashed changes
 }
 
 // A simple in-memory realm. Highly performant, but does not reload its contents, so
@@ -124,7 +134,7 @@ func (r *SimpleAccountRealm) AuthenticationInfo(token authc.AuthenticationToken)
 	acct, ok := r.users[t.Username()]
 
 	if !ok {
-		return nil, errors.New("No such user")
+		return nil, ErrUnknownAccount
 	}
 
 	return &acct,nil
@@ -136,6 +146,7 @@ func (r *SimpleAccountRealm) CredentialsMatcher() credential.CredentialsMatcher 
 	return r.credentialsMatcher
 }
 
+<<<<<<< Updated upstream
 // AuthorizingRealm interface
 
 func (r *SimpleAccountRealm) AuthorizationInfo(principals []interface{}) (authz.AuthorizationInfo, error) {
@@ -144,6 +155,23 @@ func (r *SimpleAccountRealm) AuthorizationInfo(principals []interface{}) (authz.
 	}
 
 	return nil,nil
+=======
+// AuthorizationInfo interface
+
+func (r *SimpleAccountRealm) AuthorizationInfo(principals []interface{}) (authz.AuthorizationInfo,error) {
+
+	if len(principals) == 0 {
+		return nil,errors.New("No principals")
+	}
+
+	acct, ok := r.users[principals[0].(stringer).String()]
+
+	if !ok {
+		return nil, ErrUnknownAccount
+	}
+
+	return acct,nil
+>>>>>>> Stashed changes
 }
 
 // Authorizer interface
@@ -159,9 +187,13 @@ func (r *SimpleAccountRealm) HasRole(principals []interface{}, role string) bool
 }
 
 func (r *SimpleAccountRealm) IsPermittedP(principals []interface{}, permission authz.Permission) bool {
+<<<<<<< Updated upstream
 	acct, ok := r.users[fmt.Sprint(principals[0])]
+=======
+	acct, err := r.AuthorizationInfo(principals)
+>>>>>>> Stashed changes
 
-	if ok {
+	if err != nil {
 		for _,role := range acct.Roles() {
 			simplerole, gotit := r.roles[role]
 
