@@ -11,6 +11,15 @@ import (
 	"time"
 )
 
+/*
+    A SecurityManager is typically a singleton per application, and well, manages security
+    for the application.
+
+    It provides authorization, authentication and session management, as well as Subject management.
+
+    Users typically don't call the methods on SecurityManager directly, but rely on e.g.
+    a Delegator Subject instance to call them for them.
+ */
 type SecurityManager interface {
 	authz.Authorizer
 	authc.Authenticator
@@ -21,8 +30,8 @@ type SecurityManager interface {
 }
 
 var (
+	// This is the default Kuro security manager, which should be usable for you most of the time.
 	Manager *DefaultSecurityManager
-	Verbose bool = false
 )
 
 func init() {
@@ -30,20 +39,21 @@ func init() {
 	Manager.SetSessionManager(session.NewMemory(30 * time.Minute))
 }
 
-func logf(format string, vars ...interface{}) {
-	if Verbose {
+func (sm *DefaultSecurityManager) logf(format string, vars ...interface{}) {
+	if sm.Debug {
 		log.Printf("Kuro: "+format, vars...)
 	}
 }
 
 type DefaultSecurityManager struct {
+	Debug          bool
 	realms         []realm.Realm
 	sessionManager session.SessionManager
 }
 
 // Replaces the realms with a single realm
 func (sm *DefaultSecurityManager) SetRealm(r realm.Realm) {
-	logf("Replacing all realms with new Realm %s", r.Name())
+	sm.logf("Replacing all realms with new Realm %s", r.Name())
 	sm.realms = make([]realm.Realm, 1)
 	sm.realms[0] = r
 }
@@ -62,18 +72,18 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 		return nil, errors.New("The SecurityManager has no Realms and is not configured properly")
 	}
 
-	logf("Authenticating %s", token.Principal())
+	sm.logf("Authenticating %s", token.Principal())
 
 	for _, r := range sm.realms {
 		if r.Supports(token) {
-			logf("Authenticating '%s' against realm '%v'", token.Principal(), r.Name())
+			sm.logf("Authenticating '%s' against realm '%v'", token.Principal(), r.Name())
 
 			ai, err := r.AuthenticationInfo(token)
 
 			// TODO: This is basically the "first realm that supports this token fails" -method
 			//       It should really be a pluggable authenticator
 			if err != nil {
-				logf("Login failed for %s due to %s", token.Principal(), err.Error())
+				sm.logf("Login failed for %s due to %s", token.Principal(), err.Error())
 				return nil, err
 			}
 
@@ -98,7 +108,7 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 func (sm *DefaultSecurityManager) CreateSubject(ctx *SubjectContext) (Subject, error) {
 	sub := newSubject(sm, *ctx)
 
-	logf("Created new Subject: %v", sub)
+	sm.logf("Created new Subject: %v", sub)
 
 
 	if sm.SessionManager() != nil && ctx.CreateSessions {
@@ -201,7 +211,7 @@ func (sm *DefaultSecurityManager) Login(subject Subject, token authc.Authenticat
 		return errors.New("The subject must have been created by this SecurityManager!")
 	}
 
-	logf("Login attempt by %s", token.Principal())
+	sm.logf("Login attempt by %s", token.Principal())
 
 	ai, err := sm.Authenticate(token)
 
@@ -209,7 +219,7 @@ func (sm *DefaultSecurityManager) Login(subject Subject, token authc.Authenticat
 		d.principals = ai.Principals()
 		d.authenticated = true
 
-		logf("Login successful, got principal list: %v", subject)
+		sm.logf("Login successful, got principal list: %v", subject)
 
 		if sm.sessionManager != nil {
 			d.store()
@@ -228,7 +238,7 @@ func (sm *DefaultSecurityManager) Logout(subject Subject) error {
 		return errors.New("The subject must have been created by this SecurityManager!")
 	}
 
-	logf("Logging out user '%s' (for Subject %v)", d.principals, d)
+	sm.logf("Logging out user '%s' (for Subject %v)", d.principals, d)
 
 	// Mark user logged out and clear the principals
 	d.authenticated = false

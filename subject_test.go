@@ -9,6 +9,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"bytes"
+	"encoding/gob"
+	"github.com/stretchr/testify/require"
 )
 
 var ini string = `
@@ -30,7 +33,7 @@ func init() {
 	sm.SetRealm(r)
 	sm.SetSessionManager(session.NewMemory(30 * time.Second))
 
-	Verbose = true
+	sm.Debug = true
 }
 
 func TestCreate(t *testing.T) {
@@ -207,3 +210,34 @@ func TestSession(t *testing.T) {
 
 }
 */
+
+func TestPrincipalStack_EncodeDecode(t *testing.T) {
+	p := principalStack{}
+	pp := []interface{} {}
+
+	pp = append(pp, "foo")
+	pp = append(pp, "bar")
+
+	p.Push( pp )
+
+	var network bytes.Buffer        // Stand-in for a network connection
+	enc := gob.NewEncoder(&network) // Will write to network.
+	dec := gob.NewDecoder(&network) // Will read from network.
+
+	err := enc.Encode(&p)
+	require.NoError(t, err)
+
+	q := principalStack{}
+
+	err = dec.Decode(&q)
+	require.NoError(t, err)
+
+	assert.False(t, q.IsEmpty())
+
+	principals,err := q.Pop()
+
+	require.NoError(t, err)
+
+	assert.Equal(t, "foo", principals[0])
+	assert.Equal(t, "bar", principals[1])
+}
