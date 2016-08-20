@@ -11,14 +11,20 @@ import (
 	"sync"
 )
 
-const (
-	SubjectKey = "__kuro_subject"
-)
 
 func init() {
 	gob.Register(PrincipalStack{})
 }
 
+/*
+    A Subject represents the current user in Kuro.  Subjects exist even when the user is not logged
+    in, and in such a case, represent an anonymous user.
+
+    However, a Subject is tied to a particular user and never shared with another user.
+
+    In an HTTP context, they live through a single
+    HTTP request.  If you wish to maintain some state across subsequent requests, use the Subject's Session.
+ */
 type Subject interface {
 	Principal() interface{}
 	Session() session.Session
@@ -35,6 +41,10 @@ type Subject interface {
 	IsRemembered() bool
 }
 
+/*
+   Delegator is an implementation of Subject that just delegates all the Subject's methods to an underlying
+   SecurityManager instance.
+ */
 type Delegator struct {
 	principals     []interface{}
 	mgr            SecurityManager
