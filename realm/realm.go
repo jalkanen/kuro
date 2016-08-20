@@ -170,7 +170,7 @@ func (r *SimpleAccountRealm) HasRole(principals []interface{}, role string) bool
 func (r *SimpleAccountRealm) IsPermittedP(principals []interface{}, permission authz.Permission) bool {
 	acct, err := r.AuthorizationInfo(principals)
 
-	if err != nil {
+	if err == nil {
 		for _,role := range acct.Roles() {
 			simplerole, gotit := r.roles[role]
 
