@@ -9,16 +9,23 @@ import (
 	"github.com/jalkanen/kuro/session"
 	"net/http"
 	"sync"
+	"bytes"
 )
 
-const (
-	SubjectKey = "__kuro_subject"
-)
 
 func init() {
-	gob.Register(PrincipalStack{})
+	gob.Register(principalStack{})
 }
 
+/*
+    A Subject represents the current user in Kuro.  Subjects exist even when the user is not logged
+    in, and in such a case, represent an anonymous user.
+
+    However, a Subject is tied to a particular user and never shared with another user.
+
+    In an HTTP context, they live through a single
+    HTTP request.  If you wish to maintain some state across subsequent requests, use the Subject's Session.
+ */
 type Subject interface {
 	Principal() interface{}
 	Session() session.Session
@@ -35,6 +42,10 @@ type Subject interface {
 	IsRemembered() bool
 }
 
+/*
+   Delegator is an implementation of Subject that just delegates all the Subject's methods to an underlying
+   SecurityManager instance.
+ */
 type Delegator struct {
 	principals     []interface{}
 	mgr            SecurityManager
@@ -91,12 +102,8 @@ func Get(r *http.Request, w http.ResponseWriter) Subject {
 			d.load()
 		}
 
-		logf("Get: Created new subject %v for %v", subject, r)
-
 		// Store this one for the request to avoid further calls to the session
 		subjects[r] = subject
-	} else {
-		logf("Get: Returning existing subject %v for %v", subject, r)
 	}
 
 	return subject
@@ -295,21 +302,21 @@ func (s *Delegator) clearPrincipalStack() {
 	}
 }
 
-func (s *Delegator) getPrincipalStack() (*PrincipalStack, error) {
+func (s *Delegator) getPrincipalStack() (*principalStack, error) {
 	session := s.Session()
 
 	if session != nil {
-		var p *PrincipalStack
+		var p *principalStack
 		ps := session.Get(sessionRunAsKey)
 
 		// The thing is that we don't know in which format the session is storing
 		// our stuff; this is a known problem with Gorilla.
 		if ps == nil {
-			p = &PrincipalStack{}
-		} else if _, ok := ps.(*PrincipalStack); ok {
-			p = ps.(*PrincipalStack)
-		} else if _, ok := ps.(PrincipalStack); ok {
-			pp := ps.(PrincipalStack)
+			p = &principalStack{}
+		} else if _, ok := ps.(*principalStack); ok {
+			p = ps.(*principalStack)
+		} else if _, ok := ps.(principalStack); ok {
+			pp := ps.(principalStack)
 			p = &pp
 		}
 
@@ -319,7 +326,7 @@ func (s *Delegator) getPrincipalStack() (*PrincipalStack, error) {
 	return nil, errors.New("No session available")
 }
 
-func (s *Delegator) storePrincipalStack(ps *PrincipalStack) error {
+func (s *Delegator) storePrincipalStack(ps *principalStack) error {
 
 	if ps.IsEmpty() {
 		return errors.New("Principal stack must contain at least one principal.")
@@ -335,26 +342,27 @@ func (s *Delegator) storePrincipalStack(ps *PrincipalStack) error {
 
 /****************************************************************/
 
-type PrincipalStack struct {
+// Represents principals for RunAs functionality.
+type principalStack struct {
 	Stack [][]interface{}
 	lock  sync.Mutex
 }
 
-func (s *PrincipalStack) Push(principals []interface{}) {
+func (s *principalStack) Push(principals []interface{}) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	s.Stack = append(s.Stack, principals)
 }
 
-func (s *PrincipalStack) IsEmpty() bool {
+func (s *principalStack) IsEmpty() bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	return len(s.Stack) == 0
 }
 
-func (s *PrincipalStack) Pop() ([]interface{}, error) {
+func (s *principalStack) Pop() ([]interface{}, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -369,7 +377,7 @@ func (s *PrincipalStack) Pop() ([]interface{}, error) {
 	return res, nil
 }
 
-func (s *PrincipalStack) Peek() ([]interface{}, error) {
+func (s *principalStack) Peek() ([]interface{}, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -381,4 +389,19 @@ func (s *PrincipalStack) Peek() ([]interface{}, error) {
 	res := s.Stack[l-1]
 
 	return res, nil
+}
+
+// Provide GOB encoding and decoding.
+func (s *principalStack) GobEncode() ([]byte, error) {
+	var b bytes.Buffer
+	enc := gob.NewEncoder(&b)
+	enc.Encode(s.Stack)
+	return b.Bytes(), nil
+}
+
+func (s *principalStack) GobDecode(data []byte) error {
+	b := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(b)
+	err := dec.Decode(&s.Stack)
+	return err
 }

@@ -1,20 +1,24 @@
 package realm
 
 import (
+	"encoding/gob"
 	"errors"
+	"fmt"
 	"github.com/jalkanen/kuro/authc"
 	"github.com/jalkanen/kuro/authc/credential"
 	"github.com/jalkanen/kuro/authz"
 	"github.com/jalkanen/kuro/ini"
 	"io"
 	"strings"
-	"fmt"
-	"encoding/gob"
+)
+
+var (
+	ErrUnknownAccount error = errors.New("Unknown account")
 )
 
 // Realms are essentially user, role and permission databases.
 type Realm interface {
-	AuthenticationInfo(authc.AuthenticationToken) (authc.AuthenticationInfo,error)
+	AuthenticationInfo(authc.AuthenticationToken) (authc.AuthenticationInfo, error)
 	Name() string
 	Supports(authc.AuthenticationToken) bool
 }
@@ -29,7 +33,7 @@ type AuthenticatingRealm interface {
 // to get the AuthorizationInfo.
 type AuthorizingRealm interface {
 	AuthenticatingRealm
-	AuthorizationInfo(principals []interface{}) (authz.AuthorizationInfo,error)
+	AuthorizationInfo(principals []interface{}) (authz.AuthorizationInfo, error)
 }
 
 // A simple in-memory realm. Highly performant, but does not reload its contents, so
@@ -53,7 +57,7 @@ func init() {
 
 // Creates a new IniRealm, reading from a Reader.
 func NewIni(name string, in io.Reader) (*IniRealm, error) {
-	realm := IniRealm{ SimpleAccountRealm{name: name} }
+	realm := IniRealm{SimpleAccountRealm{name: name}}
 	realm.users = make(map[string]authc.SimpleAccount)
 	realm.roles = make(map[string]authz.SimpleRole)
 	realm.credentialsMatcher = &credential.PlainText{}
@@ -119,15 +123,15 @@ func (r *SimpleAccountRealm) Supports(token authc.AuthenticationToken) bool {
 }
 
 func (r *SimpleAccountRealm) AuthenticationInfo(token authc.AuthenticationToken) (authc.AuthenticationInfo, error) {
-	t,_ := token.(*authc.UsernamePasswordToken)
+	t, _ := token.(*authc.UsernamePasswordToken)
 
 	acct, ok := r.users[t.Username()]
 
 	if !ok {
-		return nil, errors.New("No such user")
+		return nil, ErrUnknownAccount
 	}
 
-	return &acct,nil
+	return &acct, nil
 }
 
 // AuthenticatingRealm interface
@@ -139,11 +143,16 @@ func (r *SimpleAccountRealm) CredentialsMatcher() credential.CredentialsMatcher 
 // AuthorizingRealm interface
 
 func (r *SimpleAccountRealm) AuthorizationInfo(principals []interface{}) (authz.AuthorizationInfo, error) {
+
+	if len(principals) == 0 {
+		return nil, errors.New("No principals")
+	}
+
 	if acct, ok := r.users[fmt.Sprint(principals[0])]; ok {
 		return &acct, nil
 	}
 
-	return nil,nil
+	return nil, ErrUnknownAccount
 }
 
 // Authorizer interface
@@ -159,10 +168,10 @@ func (r *SimpleAccountRealm) HasRole(principals []interface{}, role string) bool
 }
 
 func (r *SimpleAccountRealm) IsPermittedP(principals []interface{}, permission authz.Permission) bool {
-	acct, ok := r.users[fmt.Sprint(principals[0])]
+	acct, err := r.AuthorizationInfo(principals)
 
-	if ok {
-		for _,role := range acct.Roles() {
+	if err == nil {
+		for _, role := range acct.Roles() {
 			simplerole, gotit := r.roles[role]
 
 			if gotit && simplerole.IsPermitted(permission) {
@@ -177,7 +186,7 @@ func (r *SimpleAccountRealm) IsPermitted(subjectPrincipal []interface{}, permiss
 	p, err := authz.NewWildcardPermission(permission)
 
 	if err != nil {
-		return false;
+		return false
 	}
 
 	return r.IsPermittedP(subjectPrincipal, p)
