@@ -10,6 +10,7 @@ import (
 	"log"
 	"time"
 	"fmt"
+	"sync/atomic"
 )
 
 type SecurityManager interface {
@@ -96,11 +97,15 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 	return nil, errors.New("Unknown user account") // FIXME: Return proper error type
 }
 
+// Since bools aren't atomic, we use just a simple int32 with the atomic package
+var configMissingWarning int32
+
 func (sm *DefaultSecurityManager) CreateSubject(ctx *SubjectContext) (Subject, error) {
-	if len(sm.realms) == 0 {
+	if len(sm.realms) == 0 && atomic.LoadInt32(&configMissingWarning) == 0 {
 		fmt.Errorf("Kuro does not appear to be properly configured: no realms have been defined. " +
 			"You can still keep creating Subjects, but be aware that most functionality " +
 			"(like permission checks) around them will not work properly.")
+		atomic.StoreInt32(&configMissingWarning,1)
 	}
 
 	sub := newSubject(sm, *ctx)
@@ -175,7 +180,6 @@ func (sm *DefaultSecurityManager) IsPermittedP(principals []interface{}, permiss
 }
 
 func (sm *DefaultSecurityManager) IsPermitted(principals []interface{}, permission string) bool {
-	fmt.Printf("ISPERMITTED: %+v\n",principals)
 	if len(principals) == 0 {
 		return false
 	}
