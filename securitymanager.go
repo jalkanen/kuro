@@ -9,6 +9,7 @@ import (
 	"github.com/jalkanen/kuro/session"
 	"log"
 	"time"
+	"fmt"
 )
 
 type SecurityManager interface {
@@ -96,6 +97,12 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 }
 
 func (sm *DefaultSecurityManager) CreateSubject(ctx *SubjectContext) (Subject, error) {
+	if len(sm.realms) == 0 {
+		fmt.Errorf("Kuro does not appear to be properly configured: no realms have been defined. " +
+			"You can still keep creating Subjects, but be aware that most functionality " +
+			"(like permission checks) around them will not work properly.")
+	}
+
 	sub := newSubject(sm, *ctx)
 
 	logf("Created new Subject: %v", sub)
@@ -168,6 +175,7 @@ func (sm *DefaultSecurityManager) IsPermittedP(principals []interface{}, permiss
 }
 
 func (sm *DefaultSecurityManager) IsPermitted(principals []interface{}, permission string) bool {
+	fmt.Printf("ISPERMITTED: %+v\n",principals)
 	if len(principals) == 0 {
 		return false
 	}
