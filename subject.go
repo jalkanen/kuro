@@ -14,7 +14,7 @@ import (
 
 
 func init() {
-	gob.Register(principalStack{})
+	gob.Register(PrincipalStack{})
 }
 
 /*
@@ -302,21 +302,21 @@ func (s *Delegator) clearPrincipalStack() {
 	}
 }
 
-func (s *Delegator) getPrincipalStack() (*principalStack, error) {
+func (s *Delegator) getPrincipalStack() (*PrincipalStack, error) {
 	session := s.Session()
 
 	if session != nil {
-		var p *principalStack
+		var p *PrincipalStack
 		ps := session.Get(sessionRunAsKey)
 
 		// The thing is that we don't know in which format the session is storing
 		// our stuff; this is a known problem with Gorilla.
 		if ps == nil {
-			p = &principalStack{}
-		} else if _, ok := ps.(*principalStack); ok {
-			p = ps.(*principalStack)
-		} else if _, ok := ps.(principalStack); ok {
-			pp := ps.(principalStack)
+			p = &PrincipalStack{}
+		} else if _, ok := ps.(*PrincipalStack); ok {
+			p = ps.(*PrincipalStack)
+		} else if _, ok := ps.(PrincipalStack); ok {
+			pp := ps.(PrincipalStack)
 			p = &pp
 		}
 
@@ -326,7 +326,7 @@ func (s *Delegator) getPrincipalStack() (*principalStack, error) {
 	return nil, errors.New("No session available")
 }
 
-func (s *Delegator) storePrincipalStack(ps *principalStack) error {
+func (s *Delegator) storePrincipalStack(ps *PrincipalStack) error {
 
 	if ps.IsEmpty() {
 		return errors.New("Principal stack must contain at least one principal.")
@@ -343,26 +343,26 @@ func (s *Delegator) storePrincipalStack(ps *principalStack) error {
 /****************************************************************/
 
 // Represents principals for RunAs functionality.
-type principalStack struct {
+type PrincipalStack struct {
 	Stack [][]interface{}
 	lock  sync.Mutex
 }
 
-func (s *principalStack) Push(principals []interface{}) {
+func (s *PrincipalStack) Push(principals []interface{}) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	s.Stack = append(s.Stack, principals)
 }
 
-func (s *principalStack) IsEmpty() bool {
+func (s *PrincipalStack) IsEmpty() bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	return len(s.Stack) == 0
 }
 
-func (s *principalStack) Pop() ([]interface{}, error) {
+func (s *PrincipalStack) Pop() ([]interface{}, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -377,7 +377,7 @@ func (s *principalStack) Pop() ([]interface{}, error) {
 	return res, nil
 }
 
-func (s *principalStack) Peek() ([]interface{}, error) {
+func (s *PrincipalStack) Peek() ([]interface{}, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -392,14 +392,14 @@ func (s *principalStack) Peek() ([]interface{}, error) {
 }
 
 // Provide GOB encoding and decoding.
-func (s *principalStack) GobEncode() ([]byte, error) {
+func (s *PrincipalStack) GobEncode() ([]byte, error) {
 	var b bytes.Buffer
 	enc := gob.NewEncoder(&b)
 	enc.Encode(s.Stack)
 	return b.Bytes(), nil
 }
 
-func (s *principalStack) GobDecode(data []byte) error {
+func (s *PrincipalStack) GobDecode(data []byte) error {
 	b := bytes.NewBuffer(data)
 	dec := gob.NewDecoder(b)
 	err := dec.Decode(&s.Stack)

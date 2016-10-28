@@ -212,7 +212,7 @@ func TestSession(t *testing.T) {
 */
 
 func TestPrincipalStack_EncodeDecode(t *testing.T) {
-	p := principalStack{}
+	p := PrincipalStack{}
 	pp := []interface{} {}
 
 	pp = append(pp, "foo")
@@ -227,7 +227,7 @@ func TestPrincipalStack_EncodeDecode(t *testing.T) {
 	err := enc.Encode(&p)
 	require.NoError(t, err)
 
-	q := principalStack{}
+	q := PrincipalStack{}
 
 	err = dec.Decode(&q)
 	require.NoError(t, err)
