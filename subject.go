@@ -333,7 +333,7 @@ func (s *Delegator) storePrincipalStack(ps *PrincipalStack) error {
 	}
 
 	if session := s.Session(); session != nil {
-		session.Set(sessionRunAsKey, *ps)
+		session.Set(sessionRunAsKey, ps)
 		return nil
 	}
 

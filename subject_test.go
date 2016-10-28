@@ -12,6 +12,11 @@ import (
 	"bytes"
 	"encoding/gob"
 	"github.com/stretchr/testify/require"
+	"github.com/jalkanen/kuro/session/gorilla"
+	"github.com/gorilla/sessions"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 )
 
 var ini string = `
@@ -109,8 +114,16 @@ func TestCreateReady(t *testing.T) {
 }
 
 func TestRunAs(t *testing.T) {
-	subject, _ := sm.CreateSubject(&SubjectContext{
+	msm := new(DefaultSecurityManager)
+	r, _ := realm.NewIni("ini", strings.NewReader(ini))
+	msm.SetRealm(r)
+	tmpFile,_ := ioutil.TempDir("","runas")
+	msm.SetSessionManager(gorilla.NewGorillaManager(sessions.NewFilesystemStore(tmpFile, []byte("something-very-secret"))))
+
+	subject, _ := msm.CreateSubject(&SubjectContext{
 		CreateSessions: true,
+		Request: &http.Request{},
+		ResponseWriter: &httptest.ResponseRecorder{},
 	})
 
 	subject.Login(authc.NewToken("foo", "password"))
