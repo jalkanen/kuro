@@ -13,6 +13,11 @@ type SaltedAuthenticationInfo interface {
 	CredentialsSalt() []byte
 }
 
+// The "info" contents should be merged into the current authentication info without modifying the merged "info" object.
+type MergableAuthenticationInfo interface {
+	Merge(info AuthenticationInfo)
+}
+
 type Account interface {
 	AuthenticationInfo
 	SaltedAuthenticationInfo
@@ -26,6 +31,13 @@ type SimpleAccount struct {
 	permissions map[string]authz.Permission
 	roles       map[string]bool
 	Realm string
+}
+
+// Just merges the principals from the given info into this one.
+func (a *SimpleAccount) Merge(info AuthenticationInfo) {
+	for _,p := range info.Principals() {
+		a.principals = append(a.principals, p)
+	}
 }
 
 // TODO: Probably shouldn't iterate through the list the entire time

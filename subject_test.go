@@ -1,22 +1,22 @@
 package kuro
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
+	"github.com/gorilla/sessions"
 	"github.com/jalkanen/kuro/authc"
 	"github.com/jalkanen/kuro/realm"
 	"github.com/jalkanen/kuro/session"
-	"github.com/stretchr/testify/assert"
-	"strings"
-	"testing"
-	"time"
-	"bytes"
-	"encoding/gob"
-	"github.com/stretchr/testify/require"
 	"github.com/jalkanen/kuro/session/gorilla"
-	"github.com/gorilla/sessions"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
 )
 
 var ini string = `
@@ -30,15 +30,46 @@ var ini string = `
   agroup= read:*
   manager = write:*, manage:*
 `
+
+var ini2 string = `
+  [users]
+  foo2 = password
+`
+
 var sm *DefaultSecurityManager
 
+func newSecurityManager() *DefaultSecurityManager {
+	return &DefaultSecurityManager{
+		authenticationStrategy: &AtLeastOneSuccessfulStrategy{},
+	}
+}
+
 func init() {
-	sm = new(DefaultSecurityManager)
+	sm = newSecurityManager()
 	r, _ := realm.NewIni("ini", strings.NewReader(ini))
-	sm.SetRealm(r)
+	r2, _ := realm.NewIni("ini", strings.NewReader(ini2))
+	sm.AddRealm(r)
+	sm.AddRealm(r2)
 	sm.SetSessionManager(session.NewMemory(30 * time.Second))
 
 	sm.Debug = true
+}
+
+func TestMultiRealm(t *testing.T) {
+	subject, _ := sm.CreateSubject(&SubjectContext{
+		CreateSessions: true,
+	})
+
+	assert.False(t, subject.IsAuthenticated())
+
+	err := subject.Login(authc.NewToken("foo2", "password"))
+
+	assert.NoError(t, err)
+	assert.True(t, subject.IsAuthenticated())
+
+	subject.Logout()
+
+	assert.False(t, subject.IsAuthenticated())
 }
 
 func TestCreate(t *testing.T) {
@@ -51,21 +82,21 @@ func TestCreate(t *testing.T) {
 	err := subject.Login(authc.NewToken("user", "password"))
 
 	// Shouldn't work
-	assert.NotNil(t, err, "got error", err)
+	assert.Error(t, err, "Login was successful with nonexistant user")
 
 	assert.False(t, subject.IsAuthenticated())
 
 	err = subject.Login(authc.NewToken("foo", "incorrect password"))
 
 	// Shouldn't work
-	assert.NotNil(t, err, "got error", err)
+	require.Error(t, err, "Login was successful with incorrect password")
 
 	assert.False(t, subject.IsAuthenticated())
 
 	// Should work
 	err = subject.Login(authc.NewToken("foo", "password"))
 
-	assert.Nil(t, err, "Login didn't succeed")
+	assert.NoError(t, err, "Login didn't succeed")
 
 	assert.True(t, subject.IsAuthenticated(), "User is not authenticated after successful login")
 
@@ -114,15 +145,15 @@ func TestCreateReady(t *testing.T) {
 }
 
 func TestRunAs(t *testing.T) {
-	msm := new(DefaultSecurityManager)
+	msm := newSecurityManager()
 	r, _ := realm.NewIni("ini", strings.NewReader(ini))
 	msm.SetRealm(r)
-	tmpFile,_ := ioutil.TempDir("","runas")
+	tmpFile, _ := ioutil.TempDir("", "runas")
 	msm.SetSessionManager(gorilla.NewGorillaManager(sessions.NewFilesystemStore(tmpFile, []byte("something-very-secret"))))
 
 	subject, _ := msm.CreateSubject(&SubjectContext{
 		CreateSessions: true,
-		Request: &http.Request{},
+		Request:        &http.Request{},
 		ResponseWriter: &httptest.ResponseRecorder{},
 	})
 
@@ -226,12 +257,12 @@ func TestSession(t *testing.T) {
 
 func TestPrincipalStack_EncodeDecode(t *testing.T) {
 	p := PrincipalStack{}
-	pp := []interface{} {}
+	pp := []interface{}{}
 
 	pp = append(pp, "foo")
 	pp = append(pp, "bar")
 
-	p.Push( pp )
+	p.Push(pp)
 
 	var network bytes.Buffer        // Stand-in for a network connection
 	enc := gob.NewEncoder(&network) // Will write to network.
@@ -247,7 +278,7 @@ func TestPrincipalStack_EncodeDecode(t *testing.T) {
 
 	assert.False(t, q.IsEmpty())
 
-	principals,err := q.Pop()
+	principals, err := q.Pop()
 
 	require.NoError(t, err)
 
