@@ -39,7 +39,7 @@ var (
 func init() {
 	Manager = &DefaultSecurityManager{
 		sessionManager:         session.NewMemory(30 * time.Minute),
-		authenticationStrategy: &AtLeastOneSuccessfulStrategy{},
+		AuthenticationStrategy: &AtLeastOneSuccessfulStrategy{},
 		realms:                 make([]realm.Realm, 0),
 	}
 }
@@ -54,7 +54,7 @@ type DefaultSecurityManager struct {
 	Debug                  bool
 	realms                 []realm.Realm
 	sessionManager         session.SessionManager
-	authenticationStrategy AuthenticationStrategy
+	AuthenticationStrategy AuthenticationStrategy
 }
 
 // Replaces the realms with a single realm
@@ -87,13 +87,13 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 		return nil, errors.New("The SecurityManager has no Realms and is not configured properly")
 	}
 
-	if sm.authenticationStrategy == nil {
+	if sm.AuthenticationStrategy == nil {
 		return nil, errors.New("This SecurityManager does not have an AuthenticationStrategy and is not configured correctly")
 	}
 
 	sm.logf("Authenticating %s", token.Principal())
 
-	aggregate, err := sm.authenticationStrategy.BeforeAllAttempts(sm.realms, token)
+	aggregate, err := sm.AuthenticationStrategy.BeforeAllAttempts(sm.realms, token)
 
 	if err != nil {
 		return nil, err
@@ -101,14 +101,14 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 
 	for _, r := range sm.realms {
 
-		aggregate, err = sm.authenticationStrategy.BeforeAttempt(r, token, aggregate)
+		aggregate, err = sm.AuthenticationStrategy.BeforeAttempt(r, token, aggregate)
 
 		if err != nil {
 			return aggregate, err
 		}
 
 		if r.Supports(token) {
-			sm.logf("Authenticating '%s' against realm '%v'", token.Principal(), r.Name())
+			sm.logf("Authenticating '%s' against realm '%s'", token.Principal(), r.Name())
 
 			ai, err := r.AuthenticationInfo(token)
 
@@ -116,11 +116,12 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 			// and the realm is an authenticating realm
 			if ar, ok := r.(realm.AuthenticatingRealm); ok && ai != nil {
 				if match := ar.CredentialsMatcher().Match(token, ai); !match {
+					sm.logf("While an account was found, the given credentials did not match for realm %s", r.Name())
 					err = errors.New("Incorrect credentials given")
 				}
 			}
 
-			aggregate, err = sm.authenticationStrategy.AfterAttempt(r, token, ai, aggregate, err)
+			aggregate, err = sm.AuthenticationStrategy.AfterAttempt(r, token, ai, aggregate, err)
 
 			if err != nil {
 				sm.logf("Login failed for %s due to %s", token.Principal(), err.Error())
@@ -129,7 +130,7 @@ func (sm *DefaultSecurityManager) Authenticate(token authc.AuthenticationToken) 
 		}
 	}
 
-	aggregate, err = sm.authenticationStrategy.AfterAllAttempts(token, aggregate)
+	aggregate, err = sm.AuthenticationStrategy.AfterAllAttempts(token, aggregate)
 
 	if err != nil {
 		sm.logf("No valid authentication for token %s was achieved: %s", token.Principal(), err.Error())

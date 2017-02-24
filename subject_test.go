@@ -40,7 +40,7 @@ var sm *DefaultSecurityManager
 
 func newSecurityManager() *DefaultSecurityManager {
 	return &DefaultSecurityManager{
-		authenticationStrategy: &AtLeastOneSuccessfulStrategy{},
+		AuthenticationStrategy: &AtLeastOneSuccessfulStrategy{},
 	}
 }
 

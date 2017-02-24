@@ -113,4 +113,12 @@ func (s *AtLeastOneSuccessfulStrategy) AfterAllAttempts(token authc.Authenticati
 	return aggregate, nil
 }
 
+func (s *AtLeastOneSuccessfulStrategy) AfterAttempt(realm realm.Realm, token authc.AuthenticationToken, singleRealmInfo authc.AuthenticationInfo, aggregate authc.AuthenticationInfo, errorFromAuthenticate error) (authc.AuthenticationInfo, error) {
 
+	// Ignore the errors from authenticator until we get to the AfterAllAttempts stage
+	if errorFromAuthenticate != nil {
+		return aggregate, nil
+	}
+
+	return s.AbstractAuthenticationStrategy.AfterAttempt(realm,token,singleRealmInfo,aggregate,nil)
+}
